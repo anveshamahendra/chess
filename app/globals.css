@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-page: #f2f2f0;
+  --bg-card: #0a0a0a;
+  --bg-card-alt: #121212;
+  --border-card: rgba(255, 255, 255, 0.06);
+  --text-heading: #f5f5f5;
+  --text-body: #a3a3a3;
+  --white-pill-bg: #ffffff;
+  --white-pill-text: #0a0a0a;
+
+  --accent-play: #5b8def;
+  --accent-puzzles: #34c77b;
+  --accent-bot: #f5a524;
+  --accent-analysis: #ec4899;
+  --accent-dashboard: #8b5cf6;
+  --accent-leaderboard: #f2c94c;
+  --accent-go: #14b8a6;
+
+  --success: #34c77b;
+  --warning: #f5a524;
+  --danger: #ef4444;
+}
+
+html, body {
+  background-color: var(--bg-page);
+  font-family: 'Cabinet Grotesk', 'General Sans', 'Space Grotesk', Inter, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-play);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
