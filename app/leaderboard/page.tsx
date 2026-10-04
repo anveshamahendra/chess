@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/nav/NavBar";
+import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 
 interface Row {
@@ -17,11 +19,19 @@ interface Row {
 const MEDAL: Record<number, string> = { 0: "#F2C94C", 1: "#C0C0C0", 2: "#CD7F32" };
 
 export default function LeaderboardPage() {
+  const { isAuthed, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
+    if (!authLoading && !isAuthed) router.push("/sign-in");
+  }, [authLoading, isAuthed, router]);
+
+  useEffect(() => {
+    // RLS only lets signed-in users read profiles; skip the doomed query.
+    if (authLoading || !isAuthed) return;
     supabase
       .from("profiles")
       .select("id, username, rating, games_played, wins, losses, draws")
@@ -31,7 +41,7 @@ export default function LeaderboardPage() {
         setRows((data as Row[]) ?? []);
         setLoading(false);
       });
-  }, [supabase]);
+  }, [supabase, authLoading, isAuthed]);
 
   return (
     <div className="min-h-screen bg-page">

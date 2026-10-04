@@ -37,14 +37,14 @@ export interface MoveRow {
 export function useGameRealtime(gameId: string) {
   const [game, setGame] = useState<GameRow | null>(null);
   const [moves, setMoves] = useState<MoveRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadedGameId, setLoadedGameId] = useState<string | null>(null);
   const supabase = createClient();
 
   const fetchInitial = useCallback(async () => {
     if (!gameId) {
       setGame(null);
       setMoves([]);
-      setLoading(false);
+      setLoadedGameId(null);
       return;
     }
     const { data: gameData } = await supabase
@@ -60,12 +60,22 @@ export function useGameRealtime(gameId: string) {
       .eq("game_id", gameId)
       .order("move_number", { ascending: true });
     setMoves((movesData as MoveRow[]) || []);
-    setLoading(false);
+    setLoadedGameId(gameId);
   }, [gameId, supabase]);
 
   useEffect(() => {
     if (!gameId) return;
     fetchInitial();
+  }, [gameId, fetchInitial]);
+
+  // Only subscribe once the initial read succeeded: RLS only lets
+  // participants read the game, so a null result means subscribing would be
+  // pointless — and after joining we want a channel authorized as a
+  // participant.
+  const canSubscribe = !!game && game.id === gameId;
+
+  useEffect(() => {
+    if (!gameId || !canSubscribe) return;
 
     const channel = supabase
       .channel(`game:${gameId}`)
@@ -84,7 +94,11 @@ export function useGameRealtime(gameId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [gameId, fetchInitial, supabase]);
+  }, [gameId, canSubscribe, supabase]);
+
+  // Derived synchronously so a gameId change never presents stale data as
+  // loaded (no flash of the wrong screen between renders).
+  const loading = gameId !== "" && loadedGameId !== gameId;
 
   return { game, moves, loading, refetch: fetchInitial };
 }

@@ -10,19 +10,42 @@ dashboard, and Stockfish-powered post-game analysis, styled after dialed.gg.
    npm install
    ```
 2. Create a Supabase project. In the SQL editor, run `supabase/schema.sql`
-   top to bottom on a fresh database.
+   top to bottom on a fresh database. On an *existing* database, run
+   `supabase/migrations/20261004_security_policies.sql` once instead — it
+   applies the same security policies idempotently.
 3. In Supabase Auth settings, enable Email sign-in (and Google OAuth if you
    want it — no extra code changes needed for email).
-4. Copy `.env.local.example` to `.env.local` and fill in your Supabase URL
-   and anon key (`SUPABASE_SERVICE_ROLE_KEY` isn't used by any route yet —
-   everything runs through RLS-scoped user sessions — but it's there if you
-   add admin-only routes later).
+4. Copy `.env.local.example` to `.env.local` and fill in all three vars.
+   `SUPABASE_SERVICE_ROLE_KEY` is **required**: every `/api/games/*` route
+   writes through it (all client-side DML on game tables is revoked in favor
+   of RLS + service-role routes), so writes fail closed without it.
 5. Download a Stockfish WASM build (e.g. `npm install stockfish` and copy
    its `stockfish.js` + `.wasm` files, or grab a prebuilt release from
    https://github.com/lichess-org/stockfish.wasm) into `public/stockfish/`
    as `stockfish.js`.
 6. `npm run dev` and open http://localhost:3000.
 7. Deploy to Vercel; add the same three env vars there.
+
+## Security
+
+The anon key is public (it ships in the browser bundle), so the API surface is
+only as safe as the row level security policies in `supabase/schema.sql`:
+
+- `profiles` — readable by signed-in users (leaderboard, opponent names);
+  updatable by the owner but only on `username` / `avatar_color` via
+  column-level grants — `rating`, `wins`, `losses`, `draws` are never
+  client-writable.
+- `games` / `moves` / `game_analysis` — readable by participants only; all
+  writes go through the service-role API routes (`/api/games/*`), and client
+  DML on these tables is revoked.
+- `rating_history` — readable only by the row's owner.
+- `apply_elo_update` is `SECURITY DEFINER` with an empty `search_path`, a
+  score-validation guard, and `EXECUTE` revoked from `public` / `anon` /
+  `authenticated` — only the service role can call it.
+- Realtime `postgres_changes` events are filtered by the same SELECT
+  policies, so live game feeds only reach participants.
+- Room codes resolve through `GET /api/games/lookup/[code]` — the room code
+  is the invite secret and is generated with `node:crypto`.
 
 ## What's implemented
 

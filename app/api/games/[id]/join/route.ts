@@ -38,12 +38,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       started_at: new Date().toISOString(),
     })
     .eq("id", params.id)
+    .eq("status", "waiting")
     .select()
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) {
-    return NextResponse.json({ error: "Failed to join game. Please verify database RLS update policy." }, { status: 500 });
+    // 0 rows: the status check lost a race — someone else joined first.
+    return NextResponse.json({ error: "Game already started" }, { status: 400 });
   }
   return NextResponse.json({ game: data });
 }

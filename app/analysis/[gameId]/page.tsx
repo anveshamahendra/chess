@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { NavBar } from "@/components/nav/NavBar";
 import { PillButton } from "@/components/ui/PillButton";
 import { ChessBoard } from "@/components/board/ChessBoard";
 import { EvalBar } from "@/components/board/EvalBar";
+import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 import { analyzeGame, MoveAnalysis } from "@/lib/chess/analyzeGame";
 import { cn } from "@/lib/utils";
@@ -36,9 +37,12 @@ const CLASSIFICATION_COLOR: Record<MoveAnalysis["classification"], string> = {
 
 export default function AnalysisPage() {
   const { gameId } = useParams<{ gameId: string }>();
+  const router = useRouter();
   const supabase = createClient();
+  const { isAuthed, loading: authLoading } = useAuth();
 
   const [game, setGame] = useState<GameRow | null>(null);
+  const [gameLoaded, setGameLoaded] = useState(false);
   const [moves, setMoves] = useState<MoveRow[]>([]);
   const [names, setNames] = useState<{ white: string; black: string }>({ white: "White", black: "Black" });
   const [cursor, setCursor] = useState(0); // 0 = start position
@@ -47,12 +51,18 @@ export default function AnalysisPage() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   useEffect(() => {
+    // RLS only lets participants read the game; null means unknown id or
+    // no access.
+    setGameLoaded(false);
     supabase
       .from("games")
       .select("id, white_player_id, black_player_id, result, result_reason")
       .eq("id", gameId)
       .maybeSingle()
-      .then(({ data }) => setGame((data as GameRow) || null));
+      .then(({ data }) => {
+        setGame((data as GameRow) || null);
+        setGameLoaded(true);
+      });
 
     supabase
       .from("moves")
@@ -97,6 +107,36 @@ export default function AnalysisPage() {
 
   const currentFen = cursor === 0 ? "start" : moves[cursor - 1]?.fen_after ?? "start";
   const currentAnalysis = cursor > 0 ? analysis?.[cursor - 1] : null;
+
+  if (!gameLoaded || authLoading) {
+    return (
+      <div className="min-h-screen bg-page">
+        <NavBar />
+        <div className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">Loading…</div>
+      </div>
+    );
+  }
+
+  if (!game) {
+    // RLS returns no row for unknown ids and for games you're not in.
+    const signedOut = !isAuthed;
+    return (
+      <div className="min-h-screen bg-page">
+        <NavBar />
+        <div className="px-4 py-10 text-center">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {signedOut ? "Sign in to view this game." : "This game isn't available to you."}
+          </p>
+          <PillButton
+            variant="secondary"
+            onClick={() => router.push(signedOut ? "/sign-in" : "/")}
+          >
+            {signedOut ? "Sign in" : "Back home"}
+          </PillButton>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-page">

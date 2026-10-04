@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Square } from "chess.js";
 import { NavBar } from "@/components/nav/NavBar";
@@ -13,44 +13,53 @@ import { GameEndModal } from "@/components/game/GameEndModal";
 import { DrawOfferBanner } from "@/components/game/DrawOfferBanner";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { useAuth } from "@/hooks/useAuth";
-import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/sounds";
+
+interface RoomLookup {
+  id: string;
+  status: string;
+  isParticipant: boolean;
+}
 
 export default function PlayRoomPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const { user, isAuthed, loading: authLoading } = useAuth();
   const router = useRouter();
-  const supabase = createClient();
 
-  const [gameId, setGameId] = useState<string | null>(null);
+  const [lookup, setLookup] = useState<RoomLookup | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
 
-  // Resolve room code -> game id
+  // Resolve room code -> game id. RLS only lets participants read games, so
+  // invitees (who aren't participants yet) resolve the code server-side.
   useEffect(() => {
     if (!roomCode) return;
     let cancelled = false;
     const cleanCode = roomCode.trim().toUpperCase();
-    supabase
-      .from("games")
-      .select("id")
-      .eq("room_code", cleanCode)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    fetch(`/api/games/lookup/${encodeURIComponent(cleanCode)}`)
+      .then(async (res) => {
         if (cancelled) return;
-        if (error || !data) {
+        if (res.status === 404) {
           setLookupError("Game not found. Double check the link.");
           return;
         }
-        setGameId(data.id);
+        if (!res.ok) {
+          setLookupError("Could not load this game. Try again.");
+          return;
+        }
+        setLookup((await res.json()) as RoomLookup);
+      })
+      .catch(() => {
+        if (!cancelled) setLookupError("Could not load this game. Try again.");
       });
     return () => {
       cancelled = true;
     };
-  }, [roomCode, supabase]);
+  }, [roomCode]);
 
-  const { game, moves } = useGameRealtime(gameId ?? "");
+  const gameId = lookup?.id ?? "";
+  const { game, moves, loading: gameLoading, refetch } = useGameRealtime(gameId);
 
   useEffect(() => {
     if (game?.status === "completed") setShowEndModal(true);
@@ -70,11 +79,16 @@ export default function PlayRoomPage() {
     if (!gameId) return;
     setJoining(true);
     const res = await fetch(`/api/games/${gameId}/join`, { method: "POST" });
-    setJoining(false);
     if (!res.ok) {
+      setJoining(false);
       const body = await res.json();
       setLookupError(body.error ?? "Could not join game");
+      return;
     }
+    // We're a participant now — refetch (RLS blocked the read until this
+    // point). Keep joining=true so the invite UI can't flash again.
+    await refetch();
+    setJoining(false);
   }
 
   async function handleMove(from: Square, to: Square, promotion?: string) {
@@ -114,11 +128,51 @@ export default function PlayRoomPage() {
     );
   }
 
-  if (!game || authLoading) {
+  if (!lookup || gameLoading || authLoading) {
     return (
       <div className="min-h-screen bg-page">
         <NavBar />
         <div className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">Loading game…</div>
+      </div>
+    );
+  }
+
+  // RLS blocks the read: we're not a participant (or the game is gone).
+  if (!game) {
+    if (lookup.status === "waiting" && !lookup.isParticipant) {
+      return (
+        <div className="min-h-screen bg-page">
+          <NavBar />
+          <div className="flex justify-center px-4 py-10">
+            <div className="w-full max-w-md rounded-[26px] bg-card p-8 text-center">
+              <h1 className="text-3xl font-bold lowercase text-white mb-2">waiting room</h1>
+              {isAuthed ? (
+                <>
+                  <p className="text-[#a3a3a3] text-sm mb-6">You've been invited to a game.</p>
+                  <PillButton variant="primary" className="w-full" onClick={handleJoin} disabled={joining}>
+                    {joining ? "Joining…" : "Join game"}
+                  </PillButton>
+                </>
+              ) : (
+                <p className="text-[#a3a3a3] text-sm">Sign in to join this game.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-page">
+        <NavBar />
+        <div className="px-4 py-10 text-center">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {lookup.status === "active" ? "This game already started." : "This game isn't available to you."}
+          </p>
+          <PillButton variant="secondary" onClick={() => router.push("/play/new")}>
+            Start a new game
+          </PillButton>
+        </div>
       </div>
     );
   }
@@ -148,15 +202,8 @@ export default function PlayRoomPage() {
                   Copy link
                 </PillButton>
               </>
-            ) : isAuthed ? (
-              <>
-                <p className="text-[#a3a3a3] text-sm mb-6">You've been invited to a game.</p>
-                <PillButton variant="primary" className="w-full" onClick={handleJoin} disabled={joining}>
-                  {joining ? "Joining…" : "Join game"}
-                </PillButton>
-              </>
             ) : (
-              <p className="text-[#a3a3a3] text-sm">Sign in to join this game.</p>
+              <p className="text-[#a3a3a3] text-sm">Waiting for the game to start…</p>
             )}
           </div>
         </div>
