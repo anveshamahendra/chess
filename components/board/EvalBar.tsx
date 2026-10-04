@@ -7,7 +7,7 @@ export function EvalBar({ evalCp, mateIn }: { evalCp: number | null; mateIn: num
   const whitePercent = 50 + (clamped / 1000) * 50;
 
   return (
-    <div className="relative w-6 h-full rounded-full overflow-hidden bg-[#0a0a0a]">
+    <div className="relative w-6 h-full rounded-full overflow-hidden bg-card">
       <motion.div
         animate={{ height: `${whitePercent}%` }}
         transition={{ type: "spring", stiffness: 200, damping: 25 }}

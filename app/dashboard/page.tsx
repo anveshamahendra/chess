@@ -83,19 +83,19 @@ export default function DashboardPage() {
 
   if (authLoading || !profile) {
     return (
-      <div className="min-h-screen bg-[#f2f2f0]">
+      <div className="min-h-screen bg-page">
         <NavBar />
-        <div className="px-4 py-10 text-center text-gray-500">Loading…</div>
+        <div className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">Loading…</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
       <div className="px-4 md:px-8 py-10">
-        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] mb-1">{profile.username}</h1>
-        <p className="text-gray-500 mb-8">Your rating, your stats, your games.</p>
+        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] dark:text-[#f5f5f5] mb-1">{profile.username}</h1>
+        <p className="text-gray-500 dark:text-gray-400 mb-8">Your rating, your stats, your games.</p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <StatCard label="Rating" value={profile.rating} />

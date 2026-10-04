@@ -20,7 +20,7 @@ export function ClockDisplay({
     <div
       className={cn(
         "rounded-2xl px-4 py-3 flex items-center justify-between transition-colors",
-        active ? "bg-white text-[#0a0a0a]" : "bg-[#121212] text-[#a3a3a3]"
+        active ? "bg-white text-[#0a0a0a]" : "bg-card-alt text-[#a3a3a3]"
       )}
     >
       <span className="text-sm font-medium">{label}</span>

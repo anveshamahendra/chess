@@ -19,7 +19,7 @@ export function SoundToggle() {
   }
 
   return (
-    <button onClick={toggle} className="p-2 text-gray-600 hover:text-black" aria-label="Toggle sound">
+    <button onClick={toggle} className="p-2 text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white" aria-label="Toggle sound">
       {enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
     </button>
   );

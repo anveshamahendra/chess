@@ -290,13 +290,13 @@ export default function PlayBotPage() {
                        (chess.turn() === "b" && playerColor === "black");
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
 
       {!inGame ? (
         // Setup Screen
         <div className="flex justify-center px-4 py-10">
-          <div className="w-full max-w-md rounded-[26px] bg-[#0a0a0a] p-8 shadow-2xl">
+          <div className="w-full max-w-md rounded-[26px] bg-card p-8 shadow-2xl">
             <div className="flex items-center gap-3 mb-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#f5a524]/20 text-[#f5a524]">
                 <Bot className="h-6 w-6" />
@@ -318,7 +318,7 @@ export default function PlayBotPage() {
                     "flex flex-col items-start p-3 rounded-2xl border text-left transition-all",
                     difficulty === d.id
                       ? "bg-[#1f1f1f] border-white/40 shadow-md"
-                      : "bg-[#121212] border-transparent text-[#a3a3a3] hover:bg-[#181818]"
+                      : "bg-card-alt border-transparent text-[#a3a3a3] hover:bg-[#181818]"
                   )}
                 >
                   <div className="flex items-center justify-between w-full mb-1">
@@ -339,7 +339,7 @@ export default function PlayBotPage() {
                   "py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-colors",
                   colorChoice === "white"
                     ? "bg-white text-[#0a0a0a]"
-                    : "bg-[#121212] text-[#a3a3a3] hover:bg-[#1a1a1a]"
+                    : "bg-card-alt text-[#a3a3a3] hover:bg-[#1a1a1a]"
                 )}
               >
                 <span className="text-lg">⚪</span> White
@@ -350,7 +350,7 @@ export default function PlayBotPage() {
                   "py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-colors",
                   colorChoice === "black"
                     ? "bg-white text-[#0a0a0a]"
-                    : "bg-[#121212] text-[#a3a3a3] hover:bg-[#1a1a1a]"
+                    : "bg-card-alt text-[#a3a3a3] hover:bg-[#1a1a1a]"
                 )}
               >
                 <span className="text-lg">⚫</span> Black
@@ -361,7 +361,7 @@ export default function PlayBotPage() {
                   "py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-colors",
                   colorChoice === "random"
                     ? "bg-white text-[#0a0a0a]"
-                    : "bg-[#121212] text-[#a3a3a3] hover:bg-[#1a1a1a]"
+                    : "bg-card-alt text-[#a3a3a3] hover:bg-[#1a1a1a]"
                 )}
               >
                 <span className="text-lg">🎲</span> Random
@@ -379,7 +379,7 @@ export default function PlayBotPage() {
                     "rounded-2xl py-3 text-sm font-medium transition-colors",
                     selectedTC.label === tc.label
                       ? "bg-white text-[#0a0a0a]"
-                      : "bg-[#121212] text-[#a3a3a3] hover:bg-[#1a1a1a]"
+                      : "bg-card-alt text-[#a3a3a3] hover:bg-[#1a1a1a]"
                   )}
                 >
                   {tc.label}
@@ -398,7 +398,7 @@ export default function PlayBotPage() {
           {/* Chess Board Area */}
           <div className="flex flex-col items-center w-full lg:w-auto">
             {/* Bot Profile Header */}
-            <div className="w-full max-w-[560px] flex items-center justify-between bg-[#0a0a0a] rounded-2xl px-4 py-2.5 mb-3">
+            <div className="w-full max-w-[560px] flex items-center justify-between bg-card rounded-2xl px-4 py-2.5 mb-3">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-[#f5a524]/20 flex items-center justify-center text-[#f5a524]">
                   <Bot className="h-5 w-5" />
@@ -441,7 +441,7 @@ export default function PlayBotPage() {
             />
 
             {/* Player Info Footer */}
-            <div className="w-full max-w-[560px] flex items-center justify-between bg-[#0a0a0a] rounded-2xl px-4 py-2.5 mt-3">
+            <div className="w-full max-w-[560px] flex items-center justify-between bg-card rounded-2xl px-4 py-2.5 mt-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-white">You</span>
                 <span className="text-xs text-[#a3a3a3]">({playerColor})</span>
@@ -485,7 +485,7 @@ export default function PlayBotPage() {
               <button
                 onClick={handleUndo}
                 disabled={isBotThinking || moves.length === 0 || !!gameOver}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-[#0a0a0a] py-3 text-sm font-medium text-white hover:bg-[#181818] disabled:opacity-40 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-card py-3 text-sm font-medium text-white hover:bg-[#181818] dark:hover:bg-[#242424] disabled:opacity-40 transition-colors"
               >
                 <Undo2 className="h-4 w-4" />
                 Undo Move
@@ -494,7 +494,7 @@ export default function PlayBotPage() {
               <button
                 onClick={handleResign}
                 disabled={!!gameOver}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-[#0a0a0a] py-3 text-sm font-medium text-[#ef4444] hover:bg-[#181818] disabled:opacity-40 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-card py-3 text-sm font-medium text-[#ef4444] hover:bg-[#181818] dark:hover:bg-[#242424] disabled:opacity-40 transition-colors"
               >
                 <Flag className="h-4 w-4" />
                 Resign
@@ -503,7 +503,7 @@ export default function PlayBotPage() {
 
             <button
               onClick={() => setInGame(false)}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-[#121212] py-3 text-sm font-medium text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-card-alt py-3 text-sm font-medium text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] dark:hover:bg-[#242424] transition-colors"
             >
               <RotateCcw className="h-4 w-4" />
               Change Settings / New Match

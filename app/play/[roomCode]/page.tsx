@@ -102,10 +102,10 @@ export default function PlayRoomPage() {
 
   if (lookupError) {
     return (
-      <div className="min-h-screen bg-[#f2f2f0]">
+      <div className="min-h-screen bg-page">
         <NavBar />
         <div className="px-4 py-10 text-center">
-          <p className="text-gray-600 mb-4">{lookupError}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{lookupError}</p>
           <PillButton variant="secondary" onClick={() => router.push("/play/new")}>
             Start a new game
           </PillButton>
@@ -116,9 +116,9 @@ export default function PlayRoomPage() {
 
   if (!game || authLoading) {
     return (
-      <div className="min-h-screen bg-[#f2f2f0]">
+      <div className="min-h-screen bg-page">
         <NavBar />
-        <div className="px-4 py-10 text-center text-gray-500">Loading game…</div>
+        <div className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">Loading game…</div>
       </div>
     );
   }
@@ -127,17 +127,17 @@ export default function PlayRoomPage() {
   if (game.status === "waiting") {
     const shareUrl = typeof window !== "undefined" ? window.location.href : "";
     return (
-      <div className="min-h-screen bg-[#f2f2f0]">
+      <div className="min-h-screen bg-page">
         <NavBar />
         <div className="flex justify-center px-4 py-10">
-          <div className="w-full max-w-md rounded-[26px] bg-[#0a0a0a] p-8 text-center">
+          <div className="w-full max-w-md rounded-[26px] bg-card p-8 text-center">
             <h1 className="text-3xl font-bold lowercase text-white mb-2">waiting room</h1>
             {isWhite ? (
               <>
                 <p className="text-[#a3a3a3] text-sm mb-6">
                   Share this link with a friend. The game starts as soon as they join.
                 </p>
-                <div className="rounded-2xl bg-[#121212] px-4 py-3 mb-6 break-all text-white text-sm">
+                <div className="rounded-2xl bg-card-alt px-4 py-3 mb-6 break-all text-white text-sm">
                   {shareUrl}
                 </div>
                 <PillButton
@@ -169,7 +169,7 @@ export default function PlayRoomPage() {
     (game.fen_current.includes(" b ") && isBlack);
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
       <div className="flex flex-col lg:flex-row items-start justify-center gap-6 px-4 py-8">
         <div className="flex justify-center w-full lg:w-auto">

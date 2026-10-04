@@ -16,7 +16,7 @@ const RESULT_STYLES: Record<RecentGame["result"], string> = {
 
 export function RecentGamesList({ games }: { games: RecentGame[] }) {
   return (
-    <div className="rounded-2xl bg-[#0a0a0a] p-5">
+    <div className="rounded-2xl bg-card p-5">
       <p className="text-[#a3a3a3] text-sm mb-4">Recent games</p>
       {games.length === 0 && <p className="text-[#a3a3a3]/60 text-sm">No games played yet.</p>}
       <div className="divide-y divide-white/5">

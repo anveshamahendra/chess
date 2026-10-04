@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
   --bg-page: #f2f2f0;
   --bg-card: #0a0a0a;
   --bg-card-alt: #121212;
@@ -23,6 +24,14 @@
   --success: #34c77b;
   --warning: #f5a524;
   --danger: #ef4444;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg-page: #0d0d0d;
+  --bg-card: #161616;
+  --bg-card-alt: #1c1c1c;
+  --border-card: rgba(255, 255, 255, 0.08);
 }
 
 html, body {

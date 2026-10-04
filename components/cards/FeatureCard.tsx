@@ -31,7 +31,7 @@ export function FeatureCard({
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="relative overflow-hidden rounded-[26px] bg-[#0a0a0a] p-6 md:p-8 flex flex-col"
+      className="relative overflow-hidden rounded-[26px] bg-card p-6 md:p-8 flex flex-col"
     >
       <div className="flex items-center gap-2 mb-6">
         <div

@@ -12,7 +12,7 @@ export function DrawOfferBanner({
   onDecline: () => void;
 }) {
   return (
-    <div className="rounded-2xl bg-[#121212] px-4 py-3 flex items-center justify-between gap-3">
+    <div className="rounded-2xl bg-card-alt px-4 py-3 flex items-center justify-between gap-3">
       <span className="text-sm text-white">
         {offeredByMe ? "Draw offer sent — waiting for opponent." : "Your opponent offered a draw."}
       </span>

@@ -50,10 +50,10 @@ const features = [
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
       <div className="px-4 md:px-8 py-10">
-        <p className="text-gray-500 mb-8">Simple, clean chess. Play with a friend in seconds.</p>
+        <p className="text-gray-500 dark:text-gray-400 mb-8">Simple, clean chess. Play with a friend in seconds.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {features.map((f) => (
             <FeatureCard key={f.title} {...f} />

@@ -31,10 +31,10 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
       <div className="flex justify-center px-4 py-10">
-        <div className="w-full max-w-sm rounded-[26px] bg-[#0a0a0a] p-8">
+        <div className="w-full max-w-sm rounded-[26px] bg-card p-8">
           <h1 className="text-3xl font-bold lowercase text-white mb-1">sign in</h1>
           <p className="text-[#a3a3a3] text-sm mb-6">Welcome back.</p>
 

@@ -34,13 +34,13 @@ export default function LeaderboardPage() {
   }, [supabase]);
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
       <div className="px-4 md:px-8 py-10">
-        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] mb-1">leaderboard</h1>
-        <p className="text-gray-500 mb-8">See who's on top.</p>
+        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] dark:text-[#f5f5f5] mb-1">leaderboard</h1>
+        <p className="text-gray-500 dark:text-gray-400 mb-8">See who's on top.</p>
 
-        <div className="rounded-[26px] bg-[#0a0a0a] overflow-hidden">
+        <div className="rounded-[26px] bg-card overflow-hidden">
           {loading && <p className="text-[#a3a3a3] p-6 text-sm">Loading…</p>}
           {!loading && rows.length === 0 && (
             <p className="text-[#a3a3a3] p-6 text-sm">No rated players yet.</p>

@@ -22,7 +22,7 @@ export function PillButton({
         variant === "primary" &&
           "bg-white text-[#0a0a0a] hover:brightness-95",
         variant === "secondary" &&
-          "bg-[#0a0a0a] text-white hover:brightness-125",
+          "bg-card text-white hover:brightness-125",
         variant === "danger" &&
           "bg-[#ef4444] text-white hover:brightness-110",
         className

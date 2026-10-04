@@ -99,11 +99,11 @@ export default function AnalysisPage() {
   const currentAnalysis = cursor > 0 ? analysis?.[cursor - 1] : null;
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
       <div className="px-4 md:px-8 py-8">
-        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] mb-1">analysis</h1>
-        <p className="text-gray-500 mb-8">
+        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] dark:text-[#f5f5f5] mb-1">analysis</h1>
+        <p className="text-gray-500 dark:text-gray-400 mb-8">
           {names.white} vs {names.black}
           {game?.result ? ` · ${game.result}${game.result_reason ? ` (${game.result_reason})` : ""}` : ""}
         </p>
@@ -137,7 +137,7 @@ export default function AnalysisPage() {
 
             {analysisError && <p className="text-[#ef4444] text-sm">{analysisError}</p>}
 
-            <div className="rounded-2xl bg-[#0a0a0a] p-4 max-h-80 overflow-y-auto">
+            <div className="rounded-2xl bg-card p-4 max-h-80 overflow-y-auto">
               <p className="text-[#a3a3a3] text-sm mb-3">Moves</p>
               <div className="space-y-1">
                 {moves.map((m, i) => {

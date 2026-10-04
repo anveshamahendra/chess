@@ -19,7 +19,7 @@ export function MoveList({ moves }: { moves: MoveRow[] }) {
   });
 
   return (
-    <div className="rounded-2xl bg-[#0a0a0a] p-4 h-64 overflow-y-auto">
+    <div className="rounded-2xl bg-card p-4 h-64 overflow-y-auto">
       <p className="text-[#a3a3a3] text-sm mb-3">Moves</p>
       {pairs.length === 0 && (
         <p className="text-[#a3a3a3]/60 text-sm">No moves yet</p>

@@ -333,7 +333,7 @@ export default function PuzzlesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -345,8 +345,8 @@ export default function PuzzlesPage() {
                 <PuzzleIcon className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold lowercase text-[#0a0a0a]">tactical puzzles</h1>
-                <p className="text-gray-500 text-sm">
+                <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] dark:text-[#f5f5f5]">tactical puzzles</h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
                   Sharpen your tactical vision with curated master challenges.
                 </p>
               </div>
@@ -355,29 +355,29 @@ export default function PuzzlesPage() {
 
           {/* Player Stats Badges */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#0a0a0a] text-white px-4 py-2.5 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-2 bg-card text-white px-4 py-2.5 rounded-2xl shadow-sm">
               <Award className="h-4 w-4 text-[#f5a524]" />
               <span className="text-xs text-[#a3a3a3]">Rating:</span>
               <span className="text-sm font-bold">{stats.rating}</span>
             </div>
 
-            <div className="flex items-center gap-2 bg-[#0a0a0a] text-white px-4 py-2.5 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-2 bg-card text-white px-4 py-2.5 rounded-2xl shadow-sm">
               <Flame className="h-4 w-4 text-[#ff5722]" />
               <span className="text-xs text-[#a3a3a3]">Streak:</span>
               <span className="text-sm font-bold">{stats.streak}</span>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl shadow-sm border border-black/5">
-              <span className="text-xs text-gray-500">Solved:</span>
-              <span className="text-sm font-bold text-gray-800">{stats.solved}</span>
+            <div className="hidden sm:flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl shadow-sm border border-black/5 dark:bg-card dark:border-white/10">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Solved:</span>
+              <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{stats.solved}</span>
             </div>
           </div>
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="bg-white rounded-2xl p-3 mb-6 shadow-sm border border-black/5 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-white rounded-2xl p-3 mb-6 shadow-sm border border-black/5 dark:bg-card dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase px-2">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-2">
               <Filter className="h-3.5 w-3.5" />
               Filter:
             </div>
@@ -389,7 +389,7 @@ export default function PuzzlesPage() {
                 setFilterDifficulty(e.target.value);
                 setCurrentIndex(0);
               }}
-              className="bg-[#f5f5f4] text-xs font-medium text-gray-800 rounded-xl px-3 py-1.5 border-0 focus:ring-2 focus:ring-black outline-none cursor-pointer"
+              className="bg-[#f5f5f4] text-xs font-medium text-gray-800 rounded-xl px-3 py-1.5 border-0 focus:ring-2 focus:ring-black outline-none cursor-pointer dark:bg-[#262626] dark:text-gray-200 dark:focus:ring-white"
             >
               <option value="all">All Difficulties</option>
               <option value="beginner">Beginner (&lt;1000)</option>
@@ -404,7 +404,7 @@ export default function PuzzlesPage() {
                 setFilterTheme(e.target.value);
                 setCurrentIndex(0);
               }}
-              className="bg-[#f5f5f4] text-xs font-medium text-gray-800 rounded-xl px-3 py-1.5 border-0 focus:ring-2 focus:ring-black outline-none cursor-pointer"
+              className="bg-[#f5f5f4] text-xs font-medium text-gray-800 rounded-xl px-3 py-1.5 border-0 focus:ring-2 focus:ring-black outline-none cursor-pointer dark:bg-[#262626] dark:text-gray-200 dark:focus:ring-white"
             >
               <option value="all">All Tactical Themes</option>
               {uniqueThemes.map((t) => (
@@ -431,7 +431,7 @@ export default function PuzzlesPage() {
           {/* Chess Board Container */}
           <div className="flex flex-col items-center w-full lg:w-auto">
             {/* Top Indicator */}
-            <div className="w-full max-w-[560px] flex items-center justify-between bg-[#0a0a0a] rounded-2xl px-4 py-3 mb-3 text-white">
+            <div className="w-full max-w-[560px] flex items-center justify-between bg-card rounded-2xl px-4 py-3 mb-3 text-white">
               <div className="flex items-center gap-2.5">
                 <span className="text-sm font-semibold">{activePuzzle.title}</span>
                 <span className="text-xs bg-white/10 px-2 py-0.5 rounded-md font-mono text-[#34c77b]">
@@ -471,7 +471,7 @@ export default function PuzzlesPage() {
                       ? "bg-[#22c55e]/15 text-[#16a34a] border border-[#22c55e]/30"
                       : status === "failed"
                       ? "bg-[#ef4444]/15 text-[#dc2626] border border-[#ef4444]/30"
-                      : "bg-[#0a0a0a] text-white"
+                      : "bg-card text-white"
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -503,7 +503,7 @@ export default function PuzzlesPage() {
           {/* Right Action & Explanation Panel */}
           <div className="w-full max-w-sm flex flex-col gap-4">
             {/* Puzzle Details Card */}
-            <div className="bg-[#0a0a0a] rounded-[26px] p-6 text-white shadow-xl">
+            <div className="bg-card rounded-[26px] p-6 text-white shadow-xl">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs uppercase tracking-wider text-[#a3a3a3] font-semibold">
                   Puzzle #{currentIndex + 1} of {filteredPuzzles.length}
@@ -570,7 +570,7 @@ export default function PuzzlesPage() {
                     <button
                       onClick={handleShowHint}
                       disabled={hintLevel >= 2 || isShowingSolution}
-                      className="flex items-center justify-center gap-1.5 bg-[#181818] hover:bg-[#222] text-xs font-medium text-[#f5a524] py-3 rounded-2xl border border-white/5 transition-colors disabled:opacity-40"
+                      className="flex items-center justify-center gap-1.5 bg-[#181818] dark:bg-[#242424] hover:bg-[#222] text-xs font-medium text-[#f5a524] py-3 rounded-2xl border border-white/5 transition-colors disabled:opacity-40"
                     >
                       <HelpCircle className="h-4 w-4" />
                       {hintLevel === 0 ? "Get Hint" : "Full Move"}
@@ -578,7 +578,7 @@ export default function PuzzlesPage() {
 
                     <button
                       onClick={handleResetPuzzle}
-                      className="flex items-center justify-center gap-1.5 bg-[#181818] hover:bg-[#222] text-xs font-medium text-white py-3 rounded-2xl border border-white/5 transition-colors"
+                      className="flex items-center justify-center gap-1.5 bg-[#181818] dark:bg-[#242424] hover:bg-[#222] text-xs font-medium text-white py-3 rounded-2xl border border-white/5 transition-colors"
                     >
                       <RotateCcw className="h-4 w-4" />
                       Reset
@@ -600,11 +600,11 @@ export default function PuzzlesPage() {
             </div>
 
             {/* Tactical Training Tips Card */}
-            <div className="bg-white rounded-[26px] p-5 shadow-sm border border-black/5 text-gray-700">
-              <h3 className="text-sm font-bold text-[#0a0a0a] mb-2 flex items-center gap-2">
+            <div className="bg-white rounded-[26px] p-5 shadow-sm border border-black/5 dark:bg-card dark:border-white/10 text-gray-700 dark:text-gray-300">
+              <h3 className="text-sm font-bold text-[#0a0a0a] dark:text-white mb-2 flex items-center gap-2">
                 <span>💡</span> Tactical Tip
               </h3>
-              <p className="text-xs text-gray-600 leading-relaxed">
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
                 Always calculate <strong>forcing moves</strong> in order: Checks first, Captures second,
                 Threats third (C-C-T method). Keep an eye out for loose or undefended pieces.
               </p>

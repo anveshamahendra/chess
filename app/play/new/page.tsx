@@ -49,10 +49,10 @@ export default function NewGamePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f2f2f0]">
+    <div className="min-h-screen bg-page">
       <NavBar />
       <div className="flex justify-center px-4 py-10">
-        <div className="w-full max-w-md rounded-[26px] bg-[#0a0a0a] p-8">
+        <div className="w-full max-w-md rounded-[26px] bg-card p-8">
           <h1 className="text-3xl font-bold lowercase text-white mb-1">new game</h1>
           <p className="text-[#a3a3a3] text-sm mb-8">Pick a time control, then share the link with a friend.</p>
 
@@ -66,7 +66,7 @@ export default function NewGamePage() {
                   "rounded-2xl py-3 text-sm font-medium transition-colors",
                   selectedTC.label === tc.label
                     ? "bg-white text-[#0a0a0a]"
-                    : "bg-[#121212] text-[#a3a3a3] hover:bg-[#1a1a1a]"
+                    : "bg-card-alt text-[#a3a3a3] hover:bg-[#1a1a1a] dark:hover:bg-[#242424]"
                 )}
               >
                 {tc.label}

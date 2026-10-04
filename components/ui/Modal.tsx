@@ -27,7 +27,7 @@ export function Modal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="w-full max-w-sm rounded-[26px] bg-[#0a0a0a] p-8"
+            className="w-full max-w-sm rounded-[26px] bg-card p-8"
             onClick={(e) => e.stopPropagation()}
           >
             {children}
