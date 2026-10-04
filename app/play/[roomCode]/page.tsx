@@ -16,7 +16,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { playSound } from "@/lib/sounds";
 
 interface RoomLookup {
-  id: string;
+  // Absent for signed-out visitors: the API withholds the game id until the
+  // caller is authenticated, so it can't be used as a pre-auth join token.
+  id?: string;
   status: string;
   isParticipant: boolean;
 }
@@ -33,8 +35,10 @@ export default function PlayRoomPage() {
 
   // Resolve room code -> game id. RLS only lets participants read games, so
   // invitees (who aren't participants yet) resolve the code server-side.
+  // Signed-out visitors get the status but no id, so wait for auth to settle
+  // and re-run once we know who is asking.
   useEffect(() => {
-    if (!roomCode) return;
+    if (!roomCode || authLoading) return;
     let cancelled = false;
     const cleanCode = roomCode.trim().toUpperCase();
     fetch(`/api/games/lookup/${encodeURIComponent(cleanCode)}`)
@@ -56,7 +60,7 @@ export default function PlayRoomPage() {
     return () => {
       cancelled = true;
     };
-  }, [roomCode]);
+  }, [roomCode, authLoading, user?.id]);
 
   const gameId = lookup?.id ?? "";
   const { game, moves, loading: gameLoading, refetch } = useGameRealtime(gameId);

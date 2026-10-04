@@ -47,5 +47,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // 0 rows: the status check lost a race — someone else joined first.
     return NextResponse.json({ error: "Game already started" }, { status: 400 });
   }
-  return NextResponse.json({ game: data });
+
+  // The waiting room only needs enough to render the board header; don't hand
+  // back the whole row (pgn, opponent UUIDs, clocks) to a just-joined stranger.
+  const { id, room_code, status, started_at, time_control_minutes, time_control_increment } = data;
+  return NextResponse.json({
+    game: {
+      id,
+      room_code,
+      status,
+      started_at,
+      time_control_minutes,
+      time_control_increment,
+      isParticipant: true,
+    },
+  });
 }

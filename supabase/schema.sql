@@ -21,6 +21,13 @@ drop policy if exists "Profiles are viewable by signed-in users" on profiles;
 create policy "Profiles are viewable by signed-in users"
   on profiles for select using (auth.uid() is not null);
 
+-- Row-level security alone still allows `select=*` over every row, so grant
+-- only the columns the leaderboard and opponent names need. `created_at` and
+-- any future column stay server-only unless added to this list explicitly.
+revoke select on table profiles from anon, authenticated;
+grant select (id, username, avatar_color, rating, games_played, wins, losses, draws)
+  on table profiles to authenticated;
+
 -- Users may edit only their own row; the column grants below limit which columns.
 drop policy if exists "Users can update own profile" on profiles;
 create policy "Users can update own profile"
