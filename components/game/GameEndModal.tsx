@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { PillButton } from "@/components/ui/PillButton";
 
@@ -25,6 +25,8 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 export function GameEndModal({ open, result, reason, isWhite, gameId, onClose }: GameEndModalProps) {
+  const router = useRouter();
+
   if (!result) return null;
 
   const youWon = (result === "1-0" && isWhite) || (result === "0-1" && !isWhite);
@@ -38,16 +40,26 @@ export function GameEndModal({ open, result, reason, isWhite, gameId, onClose }:
         <h2 className="text-3xl font-bold text-white lowercase mb-2">{headline}</h2>
         <p className="text-[#a3a3a3] mb-8">{reason ? REASON_LABELS[reason] ?? reason : ""}</p>
         <div className="flex flex-col gap-3">
-          <Link href={`/analysis/${gameId}`}>
-            <PillButton variant="primary" className="w-full">
-              View analysis
-            </PillButton>
-          </Link>
-          <Link href="/play/new">
-            <PillButton variant="secondary" className="w-full">
-              New game
-            </PillButton>
-          </Link>
+          <PillButton
+            variant="primary"
+            className="w-full"
+            onClick={() => {
+              onClose();
+              router.push(`/analysis/${gameId}`);
+            }}
+          >
+            View analysis
+          </PillButton>
+          <PillButton
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              onClose();
+              router.push("/play/new");
+            }}
+          >
+            New game
+          </PillButton>
         </div>
       </div>
     </Modal>

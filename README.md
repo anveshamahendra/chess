@@ -22,10 +22,10 @@ dashboard, and Stockfish-powered post-game analysis, styled after dialed.gg.
    Add `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` too (free tier,
    https://upstash.com) â€” without them rate limits fall back to a per-instance
    in-memory map, which is much weaker under a distributed flood.
-5. Download a Stockfish WASM build (e.g. `npm install stockfish` and copy
-   its `stockfish.js` + `.wasm` files, or grab a prebuilt release from
-   https://github.com/lichess-org/stockfish.wasm) into `public/stockfish/`
-   as `stockfish.js`.
+5. Stockfish for post-game analysis is already bundled at
+   `public/stockfish/` (Stockfish 19 lite, single-threaded). To upgrade or
+   swap builds, drop a different `stockfish.js` + `stockfish.wasm` pair in
+   the same folder — see `public/stockfish/README.md`.
 6. `npm run dev` and open http://localhost:3000.
 7. Deploy to Vercel; add the same three env vars there.
 

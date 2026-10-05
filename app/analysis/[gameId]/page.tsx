@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { NavBar } from "@/components/nav/NavBar";
 import { PillButton } from "@/components/ui/PillButton";
@@ -44,32 +44,63 @@ export default function AnalysisPage() {
   const [game, setGame] = useState<GameRow | null>(null);
   const [gameLoaded, setGameLoaded] = useState(false);
   const [moves, setMoves] = useState<MoveRow[]>([]);
+  const [movesLoaded, setMovesLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [names, setNames] = useState<{ white: string; black: string }>({ white: "White", black: "Black" });
   const [cursor, setCursor] = useState(0); // 0 = start position
   const [analysis, setAnalysis] = useState<MoveAnalysis[] | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
     // RLS only lets participants read the game; null means unknown id or
     // no access.
     setGameLoaded(false);
-    supabase
-      .from("games")
-      .select("id, white_player_id, black_player_id, result, result_reason")
-      .eq("id", gameId)
-      .maybeSingle()
-      .then(({ data }) => {
-        setGame((data as GameRow) || null);
-        setGameLoaded(true);
-      });
+    setMovesLoaded(false);
+    setLoadError(null);
 
-    supabase
-      .from("moves")
-      .select("id, move_number, player_color, san, fen_after")
-      .eq("game_id", gameId)
-      .order("move_number", { ascending: true })
-      .then(({ data }) => setMoves((data as MoveRow[]) ?? []));
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("games")
+          .select("id, white_player_id, black_player_id, result, result_reason")
+          .eq("id", gameId)
+          .maybeSingle();
+        if (error) throw error;
+        if (active) setGame((data as GameRow) || null);
+      } catch {
+        if (active) setLoadError("Couldn't load this game. Check your connection and try again.");
+      } finally {
+        if (active) setGameLoaded(true);
+      }
+    })();
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("moves")
+          .select("id, move_number, player_color, san, fen_after")
+          .eq("game_id", gameId)
+          .order("move_number", { ascending: true });
+        if (error) throw error;
+        if (active) setMoves((data as MoveRow[]) ?? []);
+      } catch {
+        if (active) setLoadError("Couldn't load this game's moves. Check your connection and try again.");
+      } finally {
+        if (active) setMovesLoaded(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [gameId, supabase]);
 
   useEffect(() => {
@@ -91,17 +122,31 @@ export default function AnalysisPage() {
   }, [game, supabase]);
 
   async function runAnalysis() {
+    const controller = new AbortController();
+    abortRef.current = controller;
     setAnalyzing(true);
     setAnalysisError(null);
+    setAnalysis(null);
+    setProgress({ done: 0, total: moves.length });
     try {
-      const result = await analyzeGame(moves.map((m) => ({ id: m.id, fen_after: m.fen_after })));
-      setAnalysis(result);
-    } catch {
-      setAnalysisError(
-        "Couldn't run the engine. Make sure a Stockfish WASM build is present at /public/stockfish/stockfish.js."
+      const result = await analyzeGame(
+        moves.map((m) => ({ id: m.id, fen_after: m.fen_after })),
+        {
+          signal: controller.signal,
+          onProgress: (done, total) => setProgress({ done, total }),
+          onUpdate: (partial) => setAnalysis(partial),
+        }
       );
+      setAnalysis(result);
+    } catch (err) {
+      if (!(err instanceof Error && err.name === "AbortError")) {
+        setAnalysisError(
+          "Couldn't run the engine. Make sure a Stockfish WASM build is present at /public/stockfish/stockfish.js."
+        );
+      }
     } finally {
       setAnalyzing(false);
+      setProgress(null);
     }
   }
 
@@ -113,6 +158,20 @@ export default function AnalysisPage() {
       <div className="min-h-screen bg-page">
         <NavBar />
         <div className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">Loading…</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-page">
+        <NavBar />
+        <div className="px-4 py-10 text-center">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{loadError}</p>
+          <PillButton variant="secondary" onClick={() => window.location.reload()}>
+            Retry
+          </PillButton>
+        </div>
       </div>
     );
   }
@@ -168,12 +227,23 @@ export default function AnalysisPage() {
               >
                 →
               </PillButton>
-              {!analysis && (
-                <PillButton variant="primary" className="flex-1" onClick={runAnalysis} disabled={analyzing || moves.length === 0}>
-                  {analyzing ? "Analyzing…" : "Run analysis"}
+              {(!analysis || analyzing) && (
+                <PillButton
+                  variant="primary"
+                  className="flex-1"
+                  onClick={runAnalysis}
+                  disabled={analyzing || !movesLoaded || moves.length === 0}
+                >
+                  {analyzing
+                    ? `Analyzing… ${progress?.done ?? 0}/${progress?.total ?? moves.length}`
+                    : "Run analysis"}
                 </PillButton>
               )}
             </div>
+
+            {movesLoaded && moves.length === 0 && !loadError && (
+              <p className="text-[#a3a3a3] text-sm">This game has no moves to analyze.</p>
+            )}
 
             {analysisError && <p className="text-[#ef4444] text-sm">{analysisError}</p>}
 
