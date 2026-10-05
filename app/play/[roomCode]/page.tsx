@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Square } from "chess.js";
+import { motion } from "framer-motion";
 import { NavBar } from "@/components/nav/NavBar";
 import { PillButton } from "@/components/ui/PillButton";
 import { ChessBoard } from "@/components/board/ChessBoard";
@@ -14,6 +15,7 @@ import { DrawOfferBanner } from "@/components/game/DrawOfferBanner";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { useAuth } from "@/hooks/useAuth";
 import { playSound } from "@/lib/sounds";
+import { createGame } from "@/lib/chess/engine";
 
 interface RoomLookup {
   // Absent for signed-out visitors: the API withholds the game id until the
@@ -33,6 +35,7 @@ export default function PlayRoomPage() {
   const [joining, setJoining] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [countdownSecs, setCountdownSecs] = useState(0);
 
   // Transient notice for rejected actions (rate limits, illegal moves, …).
   useEffect(() => {
@@ -95,6 +98,33 @@ export default function PlayRoomPage() {
     const last = moves[moves.length - 1];
     playSound(last.san.includes("x") ? "capture" : last.san.includes("+") ? "check" : "move");
   }, [moves.length]);
+
+  // Pre-game countdown: started_at is written by the join route as
+  // "now + 3s", so every client derives the same deadline and ticks down to
+  // it. Reloading mid-game finds started_at in the past -> no countdown.
+  const countdownEndMs =
+    game?.status === "active" && game.started_at
+      ? new Date(game.started_at).getTime()
+      : null;
+
+  useEffect(() => {
+    if (countdownEndMs === null) {
+      setCountdownSecs(0);
+      return;
+    }
+    const tick = () => {
+      const remaining = countdownEndMs - Date.now();
+      setCountdownSecs(remaining > 0 ? Math.ceil(remaining / 1000) : 0);
+      return remaining;
+    };
+    if (tick() <= 0) return;
+    const id = setInterval(tick, 100);
+    return () => clearInterval(id);
+  }, [countdownEndMs]);
+
+  useEffect(() => {
+    if (countdownSecs > 0) playSound("notify");
+  }, [countdownSecs]);
 
   const isWhite = game?.white_player_id === user?.id;
   const isBlack = game?.black_player_id === user?.id;
@@ -239,20 +269,24 @@ export default function PlayRoomPage() {
     );
   }
 
+  // fen_current is "start" until the first move, so substring matching on the
+  // FEN (" w " / " b ") would report nobody's turn. Derive it with chess.js.
+  const whiteToMove = createGame(game.fen_current).turn() === "w";
   const isMyTurn =
-    (game.fen_current.includes(" w ") && isWhite) ||
-    (game.fen_current.includes(" b ") && isBlack);
+    (whiteToMove && isWhite) || (!whiteToMove && isBlack);
+  const inCountdown = countdownSecs > 0;
+  const clockActive = game.status === "active" && isParticipant && !inCountdown;
 
   return (
     <div className="min-h-screen bg-page">
       <NavBar />
       <div className="flex flex-col lg:flex-row items-start justify-center gap-6 px-4 py-8">
-        <div className="flex justify-center w-full lg:w-auto">
+        <div className="relative flex justify-center w-full lg:w-auto">
           <ChessBoard
             fen={game.fen_current === "start" ? "start" : game.fen_current}
             onMove={handleMove}
             orientation={isBlack ? "black" : "white"}
-            interactive={isParticipant && isMyTurn && game.status === "active"}
+            interactive={isParticipant && isMyTurn && game.status === "active" && !inCountdown}
             lastMove={
               moves.length > 0
                 ? {
@@ -262,6 +296,22 @@ export default function PlayRoomPage() {
                 : null
             }
           />
+          {inCountdown && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center rounded-2xl bg-black/60 backdrop-blur-[2px]">
+              <motion.span
+                key={countdownSecs}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                className="text-7xl font-bold text-white"
+              >
+                {countdownSecs}
+              </motion.span>
+              <span className="mt-2 text-xs uppercase tracking-[0.3em] text-[#a3a3a3]">
+                get ready
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="w-full max-w-sm flex flex-col gap-3">
@@ -273,15 +323,15 @@ export default function PlayRoomPage() {
           <ClockDisplay
             label="Opponent"
             remainingMs={isWhite ? game.black_time_remaining_ms : game.white_time_remaining_ms}
-            isRunning={game.status === "active" && !isMyTurn}
-            active={!isMyTurn}
+            isRunning={clockActive && !isMyTurn}
+            active={clockActive && !isMyTurn}
           />
           <MoveList moves={moves} />
           <ClockDisplay
             label="You"
             remainingMs={isWhite ? game.white_time_remaining_ms : game.black_time_remaining_ms}
-            isRunning={game.status === "active" && isMyTurn}
-            active={isMyTurn}
+            isRunning={clockActive && isMyTurn}
+            active={clockActive && isMyTurn}
           />
 
           {game.draw_offered_by && game.status === "active" && (

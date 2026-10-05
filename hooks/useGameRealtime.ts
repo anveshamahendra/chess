@@ -19,6 +19,7 @@ export interface GameRow {
   time_control_minutes: number;
   time_control_increment: number;
   draw_offered_by: string | null;
+  started_at: string | null;
 }
 
 export interface MoveRow {

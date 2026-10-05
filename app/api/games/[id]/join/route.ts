@@ -38,12 +38,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Cannot join your own game" }, { status: 400 });
   }
 
+  // started_at is the countdown deadline, not merely the join time: both
+  // clients render a 3-2-1 countdown until it passes, and the move route
+  // clamps elapsed time to 0 for timestamps in the future, so the countdown
+  // isn't charged to White's clock.
   const { data, error } = await db
     .from("games")
     .update({
       black_player_id: user.id,
       status: "active",
-      started_at: new Date().toISOString(),
+      started_at: new Date(Date.now() + 3000).toISOString(),
     })
     .eq("id", params.id)
     .eq("status", "waiting")
