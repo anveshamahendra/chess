@@ -19,6 +19,9 @@ dashboard, and Stockfish-powered post-game analysis, styled after dialed.gg.
    `SUPABASE_SERVICE_ROLE_KEY` is **required**: every `/api/games/*` route
    writes through it (all client-side DML on game tables is revoked in favor
    of RLS + service-role routes), so writes fail closed without it.
+   Add `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` too (free tier,
+   https://upstash.com) — without them rate limits fall back to a per-instance
+   in-memory map, which is much weaker under a distributed flood.
 5. Download a Stockfish WASM build (e.g. `npm install stockfish` and copy
    its `stockfish.js` + `.wasm` files, or grab a prebuilt release from
    https://github.com/lichess-org/stockfish.wasm) into `public/stockfish/`
@@ -46,6 +49,31 @@ only as safe as the row level security policies in `supabase/schema.sql`:
   policies, so live game feeds only reach participants.
 - Room codes resolve through `GET /api/games/lookup/[code]` — the room code
   is the invite secret and is generated with `node:crypto`.
+
+## Abuse / DDoS protection
+
+Two layers, doing different jobs:
+
+- **`middleware.ts`** caps every `/api/*` request per caller IP (120/min,
+  400/5min) *before* the route handler runs, so junk never boots a Node
+  function or reaches Supabase. Returns `429` + `Retry-After`.
+- **Per-route limits** (`lib/rateLimit.ts`) — room lookup 10/min per IP,
+  game creation 5/min, `move` 60/min, `join` 10/min, `resign` /
+  `draw-offer` 20/min per user. User-keyed limits necessarily run after
+  auth, which is why the IP layer exists first.
+
+Both are backed by Upstash Redis (sliding window, shared across instances)
+when `UPSTASH_REDIS_REST_*` is set, and by an in-memory map otherwise.
+`callerIp()` prefers `NextRequest.ip` and otherwise takes the rightmost
+`x-forwarded-for` entry — never the leftmost, which is client-controlled.
+
+Redis errors fail *open* (request allowed, error logged) so an Upstash blip
+can't take the site down.
+
+**What this does not cover:** volumetric (L3/L4) floods and bot traffic are
+an infrastructure problem — put Cloudflare in front (free tier: Bot Fight Mode
+plus a rate-limit rule on `/api/*`) or configure Vercel WAF rules. That step
+is outside this repo.
 
 ## What's implemented
 

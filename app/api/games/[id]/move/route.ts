@@ -3,11 +3,19 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Chess } from "chess.js";
 import { getGameStatus } from "@/lib/chess/engine";
+import { userRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  if (!(await userRateLimit(user.id, "move", 60, 60_000))) {
+    return NextResponse.json(
+      { error: "You're moving too quickly." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
+  }
 
   const { from, to, promotion } = await req.json();
   const db = createAdminClient() || supabase;

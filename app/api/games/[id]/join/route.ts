@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { userRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -8,6 +9,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  if (!(await userRateLimit(user.id, "join", 10, 60_000))) {
+    return NextResponse.json(
+      { error: "You're joining games too quickly." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
   }
 
   const db = createAdminClient() || supabase;

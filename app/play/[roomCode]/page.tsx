@@ -32,6 +32,27 @@ export default function PlayRoomPage() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Transient notice for rejected actions (rate limits, illegal moves, …).
+  useEffect(() => {
+    if (!actionError) return;
+    const timer = setTimeout(() => setActionError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [actionError]);
+
+  async function reportActionError(res: Response) {
+    if (res.status === 429) {
+      setActionError("Slow down — try again in a moment.");
+      return;
+    }
+    try {
+      const body = await res.json();
+      setActionError(body.error ?? "Something went wrong.");
+    } catch {
+      setActionError("Something went wrong.");
+    }
+  }
 
   // Resolve room code -> game id. RLS only lets participants read games, so
   // invitees (who aren't participants yet) resolve the code server-side.
@@ -97,25 +118,28 @@ export default function PlayRoomPage() {
 
   async function handleMove(from: Square, to: Square, promotion?: string) {
     if (!gameId) return;
-    await fetch(`/api/games/${gameId}/move`, {
+    const res = await fetch(`/api/games/${gameId}/move`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ from, to, promotion }),
     });
+    if (!res.ok) await reportActionError(res);
   }
 
   async function handleResign() {
     if (!gameId) return;
-    await fetch(`/api/games/${gameId}/resign`, { method: "POST" });
+    const res = await fetch(`/api/games/${gameId}/resign`, { method: "POST" });
+    if (!res.ok) await reportActionError(res);
   }
 
   async function handleDrawOffer(action: "offer" | "accept" | "decline") {
     if (!gameId) return;
-    await fetch(`/api/games/${gameId}/draw-offer`, {
+    const res = await fetch(`/api/games/${gameId}/draw-offer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
     });
+    if (!res.ok) await reportActionError(res);
   }
 
   if (lookupError) {
@@ -241,6 +265,11 @@ export default function PlayRoomPage() {
         </div>
 
         <div className="w-full max-w-sm flex flex-col gap-3">
+          {actionError && (
+            <div className="rounded-2xl bg-card-alt px-4 py-3 text-center text-sm text-[#a3a3a3]">
+              {actionError}
+            </div>
+          )}
           <ClockDisplay
             label="Opponent"
             remainingMs={isWhite ? game.black_time_remaining_ms : game.white_time_remaining_ms}

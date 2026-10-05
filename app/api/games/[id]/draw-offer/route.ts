@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { userRateLimit } from "@/lib/rateLimit";
 
 // action: "offer" | "accept" | "decline"
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  if (!(await userRateLimit(user.id, "draw-offer", 20, 60_000))) {
+    return NextResponse.json(
+      { error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
+  }
 
   const { action } = await req.json();
   const db = createAdminClient() || supabase;

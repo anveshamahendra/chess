@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { rateLimit } from "@/lib/rateLimit";
+import { userRateLimit } from "@/lib/rateLimit";
 
 function generateRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -17,8 +17,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  if (!rateLimit(`create-game:${user.id}`, 5, 60_000)) {
-    return NextResponse.json({ error: "You're creating games too quickly." }, { status: 429 });
+  if (!(await userRateLimit(user.id, "create-game", 5, 60_000))) {
+    return NextResponse.json(
+      { error: "You're creating games too quickly." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
   }
 
   const db = createAdminClient() || supabase;
