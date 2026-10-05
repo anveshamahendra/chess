@@ -24,6 +24,11 @@
   --success: #34c77b;
   --warning: #f5a524;
   --danger: #ef4444;
+
+  --board-light: #f0ead6;
+  --board-dark: #7c8b9e;
+  --piece-white: #111111;
+  --piece-black: #111111;
 }
 
 .dark {
@@ -32,6 +37,11 @@
   --bg-card: #161616;
   --bg-card-alt: #1c1c1c;
   --border-card: rgba(255, 255, 255, 0.08);
+
+  --board-light: #8a93a3;
+  --board-dark: #5f6672;
+  --piece-white: #fafafa;
+  --piece-black: #151515;
 }
 
 html, body {

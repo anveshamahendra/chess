@@ -109,7 +109,7 @@ export function ChessBoard({
                 onClick={() => handleSquareClick(square)}
                 className="relative flex items-center justify-center cursor-pointer select-none"
                 style={{
-                  backgroundColor: isLight ? "#f0ead6" : "#7c8b9e",
+                  backgroundColor: isLight ? "var(--board-light)" : "var(--board-dark)",
                 }}
               >
                 {isLastMove && <div className="absolute inset-0 bg-yellow-300/30" />}
@@ -122,17 +122,20 @@ export function ChessBoard({
                   />
                 )}
                 {isLegalTarget && !piece && (
-                  <div className="absolute h-3 w-3 rounded-full bg-black/20" />
+                  <div className="absolute h-3 w-3 rounded-full bg-black/20 dark:bg-white/40" />
                 )}
                 {isLegalTarget && piece && (
-                  <div className="absolute inset-1 rounded-full border-4 border-black/20" />
+                  <div className="absolute inset-1 rounded-full border-4 border-black/20 dark:border-white/40" />
                 )}
                 {piece && (
                   <motion.span
                     layout
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     className="text-4xl md:text-5xl relative z-10"
-                    style={{ filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.25))" }}
+                    style={{
+                      color: piece.color === "w" ? "var(--piece-white)" : "var(--piece-black)",
+                      filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.25))",
+                    }}
                   >
                     {PIECE_UNICODE[`${piece.color}${piece.type}`]}
                   </motion.span>
@@ -153,7 +156,11 @@ export function ChessBoard({
                   onMove(pendingPromotion.from, pendingPromotion.to, p);
                   setPendingPromotion(null);
                 }}
-                className="h-12 w-12 rounded-xl bg-white text-3xl flex items-center justify-center hover:brightness-95"
+                className="h-12 w-12 rounded-xl text-3xl flex items-center justify-center hover:brightness-95"
+                style={{
+                  backgroundColor: "var(--board-light)",
+                  color: game.turn() === "w" ? "var(--piece-white)" : "var(--piece-black)",
+                }}
               >
                 {PIECE_UNICODE[`${game.turn()}${p}`]}
               </button>
