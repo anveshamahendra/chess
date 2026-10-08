@@ -7,8 +7,10 @@ import { PillButton } from "@/components/ui/PillButton";
 import { ChessBoard } from "@/components/board/ChessBoard";
 import { ClockDisplay } from "@/components/game/ClockDisplay";
 import { MoveList } from "@/components/game/MoveList";
+import { MoveHistoryNav } from "@/components/game/MoveHistoryNav";
 import { Modal } from "@/components/ui/Modal";
 import { MoveRow } from "@/hooks/useGameRealtime";
+import { usePlyCursor } from "@/hooks/usePlyCursor";
 import { playSound } from "@/lib/sounds";
 import { getBotMove, BotDifficulty } from "@/lib/chess/botEngine";
 import { getGameStatus } from "@/lib/chess/engine";
@@ -54,6 +56,7 @@ export default function PlayBotPage() {
   const [botTimeMs, setBotTimeMs] = useState(0);
 
   const botTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const history = usePlyCursor(moves.length);
 
   const startNewGame = useCallback(() => {
     chess.reset();
@@ -289,6 +292,11 @@ export default function PlayBotPage() {
   const isPlayerTurn = (chess.turn() === "w" && playerColor === "white") ||
                        (chess.turn() === "b" && playerColor === "black");
 
+  // Position being displayed: the live game, or an earlier ply while the
+  // player is browsing history (view-only; game state is untouched).
+  const viewedMove = history.cursor > 0 ? (moves[history.cursor - 1] ?? null) : null;
+  const viewFen = history.atLatest ? fen : viewedMove?.fen_after ?? "start";
+
   return (
     <div className="min-h-screen bg-page">
       <NavBar />
@@ -426,15 +434,17 @@ export default function PlayBotPage() {
 
             {/* Board */}
             <ChessBoard
-              fen={fen === "start" ? "start" : fen}
+              fen={viewFen === "start" ? "start" : viewFen}
               onMove={handlePlayerMove}
               orientation={playerColor}
-              interactive={inGame && isPlayerTurn && !gameOver && !isBotThinking}
+              interactive={
+                inGame && history.atLatest && isPlayerTurn && !gameOver && !isBotThinking
+              }
               lastMove={
-                moves.length > 0
+                viewedMove
                   ? {
-                      from: moves[moves.length - 1].from_square as Square,
-                      to: moves[moves.length - 1].to_square as Square,
+                      from: viewedMove.from_square as Square,
+                      to: viewedMove.to_square as Square,
                     }
                   : null
               }
@@ -469,7 +479,16 @@ export default function PlayBotPage() {
             )}
 
             {/* Move List */}
-            <MoveList moves={moves} />
+            <MoveList moves={moves} cursor={history.cursor} onSelect={history.goTo} />
+
+            {moves.length > 0 && (
+              <MoveHistoryNav
+                cursor={history.cursor}
+                count={moves.length}
+                onGoTo={history.goTo}
+                onStep={history.step}
+              />
+            )}
 
             {selectedTC.minutes > 0 && (
               <ClockDisplay

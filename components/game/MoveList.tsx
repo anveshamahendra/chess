@@ -2,8 +2,43 @@
 
 import { useEffect, useRef } from "react";
 import { MoveRow } from "@/hooks/useGameRealtime";
+import { cn } from "@/lib/utils";
 
-export function MoveList({ moves }: { moves: MoveRow[] }) {
+interface MoveListProps {
+  moves: MoveRow[];
+  cursor?: number;
+  onSelect?: (ply: number) => void;
+}
+
+function MoveCell({
+  san,
+  ply,
+  active,
+  onSelect,
+}: {
+  san: string | undefined;
+  ply: number;
+  active: boolean;
+  onSelect?: (ply: number) => void;
+}) {
+  if (!san) return <span />;
+  if (!onSelect) {
+    return <span className={cn("text-white", active && "rounded-lg bg-white/10")}>{san}</span>;
+  }
+  return (
+    <button
+      onClick={() => onSelect(ply)}
+      className={cn(
+        "rounded-lg px-1 text-left text-white transition-colors",
+        active ? "bg-white/10" : "hover:bg-white/5"
+      )}
+    >
+      {san}
+    </button>
+  );
+}
+
+export function MoveList({ moves, cursor, onSelect }: MoveListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,8 +63,18 @@ export function MoveList({ moves }: { moves: MoveRow[] }) {
         {pairs.map((p) => (
           <div key={p.number} className="grid grid-cols-[2rem_1fr_1fr] gap-2 text-[15px]">
             <span className="text-[#a3a3a3]">{p.number}.</span>
-            <span className="text-white">{p.white ?? ""}</span>
-            <span className="text-white">{p.black ?? ""}</span>
+            <MoveCell
+              san={p.white}
+              ply={(p.number - 1) * 2 + 1}
+              active={cursor === (p.number - 1) * 2 + 1}
+              onSelect={onSelect}
+            />
+            <MoveCell
+              san={p.black}
+              ply={(p.number - 1) * 2 + 2}
+              active={cursor === (p.number - 1) * 2 + 2}
+              onSelect={onSelect}
+            />
           </div>
         ))}
       </div>

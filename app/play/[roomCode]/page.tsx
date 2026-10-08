@@ -9,10 +9,12 @@ import { PillButton } from "@/components/ui/PillButton";
 import { ChessBoard } from "@/components/board/ChessBoard";
 import { ClockDisplay } from "@/components/game/ClockDisplay";
 import { MoveList } from "@/components/game/MoveList";
+import { MoveHistoryNav } from "@/components/game/MoveHistoryNav";
 import { GameControls } from "@/components/game/GameControls";
 import { GameEndModal } from "@/components/game/GameEndModal";
 import { DrawOfferBanner } from "@/components/game/DrawOfferBanner";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
+import { usePlyCursor } from "@/hooks/usePlyCursor";
 import { useAuth } from "@/hooks/useAuth";
 import { playSound } from "@/lib/sounds";
 import { createGame } from "@/lib/chess/engine";
@@ -88,6 +90,7 @@ export default function PlayRoomPage() {
 
   const gameId = lookup?.id ?? "";
   const { game, moves, loading: gameLoading, refetch } = useGameRealtime(gameId);
+  const history = usePlyCursor(moves.length);
 
   useEffect(() => {
     if (game?.status === "completed") setShowEndModal(true);
@@ -277,21 +280,36 @@ export default function PlayRoomPage() {
   const inCountdown = countdownSecs > 0;
   const clockActive = game.status === "active" && isParticipant && !inCountdown;
 
+  // Position being displayed: the live game, or an earlier ply while the
+  // player is browsing history.
+  const viewedMove = history.cursor > 0 ? (moves[history.cursor - 1] ?? null) : null;
+  const viewFen = history.atLatest
+    ? game.fen_current === "start"
+      ? "start"
+      : game.fen_current
+    : viewedMove?.fen_after ?? "start";
+
   return (
     <div className="min-h-screen bg-page">
       <NavBar />
       <div className="flex flex-col lg:flex-row items-start justify-center gap-6 px-4 py-8">
         <div className="relative flex justify-center w-full lg:w-auto">
           <ChessBoard
-            fen={game.fen_current === "start" ? "start" : game.fen_current}
+            fen={viewFen}
             onMove={handleMove}
             orientation={isBlack ? "black" : "white"}
-            interactive={isParticipant && isMyTurn && game.status === "active" && !inCountdown}
+            interactive={
+              history.atLatest &&
+              isParticipant &&
+              isMyTurn &&
+              game.status === "active" &&
+              !inCountdown
+            }
             lastMove={
-              moves.length > 0
+              viewedMove
                 ? {
-                    from: moves[moves.length - 1].from_square as Square,
-                    to: moves[moves.length - 1].to_square as Square,
+                    from: viewedMove.from_square as Square,
+                    to: viewedMove.to_square as Square,
                   }
                 : null
             }
@@ -326,7 +344,15 @@ export default function PlayRoomPage() {
             isRunning={clockActive && !isMyTurn}
             active={clockActive && !isMyTurn}
           />
-          <MoveList moves={moves} />
+          <MoveList moves={moves} cursor={history.cursor} onSelect={history.goTo} />
+          {moves.length > 0 && (
+            <MoveHistoryNav
+              cursor={history.cursor}
+              count={moves.length}
+              onGoTo={history.goTo}
+              onStep={history.step}
+            />
+          )}
           <ClockDisplay
             label="You"
             remainingMs={isWhite ? game.white_time_remaining_ms : game.black_time_remaining_ms}
