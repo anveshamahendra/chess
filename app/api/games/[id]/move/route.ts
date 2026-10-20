@@ -7,6 +7,8 @@ import { userRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
+  // Kick off body parsing while auth round-trips run.
+  const bodyPromise = req.json();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 
-  const { from, to, promotion } = await req.json();
+  const { from, to, promotion } = await bodyPromise;
   const db = createAdminClient() || supabase;
 
   const { data: game } = await db.from("games").select("*").eq("id", params.id).maybeSingle();
@@ -75,21 +77,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
   if (!move) return NextResponse.json({ error: "Illegal move" }, { status: 400 });
 
-  const { count } = await db
+  // Cheap single-row read instead of an exact COUNT(*) scan.
+  const { data: lastMoveRow } = await db
     .from("moves")
-    .select("*", { count: "exact", head: true })
-    .eq("game_id", params.id);
-
-  await db.from("moves").insert({
-    game_id: params.id,
-    move_number: (count ?? 0) + 1,
-    player_color: playerColor,
-    san: move.san,
-    from_square: move.from,
-    to_square: move.to,
-    fen_after: chess.fen(),
-    time_taken_ms: elapsedMs,
-  });
+    .select("move_number")
+    .eq("game_id", params.id)
+    .order("move_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const status = getGameStatus(chess);
   const moverRemainingAfter = moverRemainingAfterElapsed + incrementMs;
@@ -109,14 +104,31 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     updatePayload.ended_at = new Date().toISOString();
   }
 
-  const { data: updated, error } = await db
-    .from("games")
-    .update(updatePayload)
-    .eq("id", params.id)
-    .select()
-    .maybeSingle();
+  // Both writes only depend on validation — run them together.
+  const [insertResult, updateResult] = await Promise.all([
+    db.from("moves").insert({
+      game_id: params.id,
+      move_number: (lastMoveRow?.move_number ?? 0) + 1,
+      player_color: playerColor,
+      san: move.san,
+      from_square: move.from,
+      to_square: move.to,
+      fen_after: chess.fen(),
+      time_taken_ms: elapsedMs,
+    }),
+    db
+      .from("games")
+      .update(updatePayload)
+      .eq("id", params.id)
+      .select()
+      .maybeSingle(),
+  ]);
 
+  const { data: updated, error } = updateResult;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (insertResult.error) {
+    return NextResponse.json({ error: insertResult.error.message }, { status: 500 });
+  }
 
   if (status.over && game.is_rated) {
     const whiteScore = status.result === "1-0" ? 1 : status.result === "0-1" ? 0 : 0.5;

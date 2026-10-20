@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/nav/NavBar";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { RatingChart } from "@/components/dashboard/RatingChart";
 import { RecentGamesList, RecentGame } from "@/components/dashboard/RecentGamesList";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
+
+// recharts is heavy — keep it out of the initial dashboard chunk.
+const RatingChart = dynamic(
+  () => import("@/components/dashboard/RatingChart").then((m) => m.RatingChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-2xl bg-card p-5 h-64">
+        <div className="h-4 w-32 rounded bg-black/5 dark:bg-white/10 animate-pulse mb-4" />
+        <div className="h-40 rounded-xl bg-black/5 dark:bg-white/10 animate-pulse" />
+      </div>
+    ),
+  },
+);
 
 interface Profile {
   username: string;
@@ -81,33 +95,42 @@ export default function DashboardPage() {
       });
   }, [user, supabase]);
 
-  if (authLoading || !profile) {
-    return (
-      <div className="min-h-screen bg-page">
-        <NavBar />
-        <div className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">Loading…</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-page">
       <NavBar />
       <div className="px-4 md:px-8 py-10">
-        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] dark:text-[#f5f5f5] mb-1">{profile.username}</h1>
+        <h1 className="text-3xl font-bold lowercase text-[#0a0a0a] dark:text-[#f5f5f5] mb-1">
+          {profile?.username ?? "\u00a0"}
+        </h1>
         <p className="text-gray-500 dark:text-gray-400 mb-8">Your rating, your stats, your games.</p>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <StatCard label="Rating" value={profile.rating} />
-          <StatCard label="Games played" value={profile.games_played} />
-          <StatCard label="Wins" value={profile.wins} />
-          <StatCard label="Losses / draws" value={`${profile.losses} / ${profile.draws}`} />
-        </div>
+        {authLoading || !profile ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-24 rounded-2xl bg-black/5 dark:bg-white/10 animate-pulse" />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="h-64 rounded-2xl bg-black/5 dark:bg-white/10 animate-pulse" />
+              <div className="h-64 rounded-2xl bg-black/5 dark:bg-white/10 animate-pulse" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <StatCard label="Rating" value={profile.rating} />
+              <StatCard label="Games played" value={profile.games_played} />
+              <StatCard label="Wins" value={profile.wins} />
+              <StatCard label="Losses / draws" value={`${profile.losses} / ${profile.draws}`} />
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <RatingChart data={ratingHistory} />
-          <RecentGamesList games={recentGames} />
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <RatingChart data={ratingHistory} />
+              <RecentGamesList games={recentGames} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

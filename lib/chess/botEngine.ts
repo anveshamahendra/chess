@@ -278,3 +278,99 @@ export async function getBotMove(
   const m = legalMoves[0];
   return { from: m.from as Square, to: m.to as Square, promotion: m.promotion };
 }
+
+// --- Web Worker wrapper ------------------------------------------------------
+// getBotMove's search is fully synchronous, so running it on the main thread
+// freezes the UI for the whole search (seconds at hard/master). getBotMoveAsync
+// offloads it to a Worker; if workers are unavailable or the worker fails to
+// load, it falls back to the synchronous path.
+
+interface PendingBotRequest {
+  resolve: (move: { from: Square; to: Square; promotion?: string } | null) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+let botWorker: Worker | null = null;
+let botWorkerBroken = false;
+let botRequestId = 0;
+const pendingBotRequests = new Map<number, PendingBotRequest>();
+
+function getBotWorker(): Worker | null {
+  if (botWorkerBroken || typeof Worker === "undefined") return null;
+  if (botWorker) return botWorker;
+
+  try {
+    botWorker = new Worker(new URL("./botEngine.worker.ts", import.meta.url));
+    botWorker.onmessage = (e: MessageEvent) => {
+      const data = e.data as
+        | { id: number; move: { from: string; to: string; promotion?: string } | null }
+        | { id: number; error: string };
+      const pending = pendingBotRequests.get(data.id);
+      if (!pending) return;
+      pendingBotRequests.delete(data.id);
+      clearTimeout(pending.timer);
+      if ("error" in data) pending.reject(new Error(data.error));
+      else {
+        pending.resolve(
+          data.move
+            ? {
+                from: data.move.from as Square,
+                to: data.move.to as Square,
+                promotion: data.move.promotion,
+              }
+            : null,
+        );
+      }
+    };
+    botWorker.onerror = () => {
+      // Worker failed to load/compile — reject everyone waiting and fall back
+      // to the synchronous engine for subsequent calls.
+      botWorkerBroken = true;
+      for (const [id, pending] of pendingBotRequests) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error("Bot worker crashed"));
+      }
+      pendingBotRequests.clear();
+      botWorker?.terminate();
+      botWorker = null;
+    };
+    return botWorker;
+  } catch {
+    botWorkerBroken = true;
+    return null;
+  }
+}
+
+const BOT_SEARCH_TIMEOUT_MS = 30_000;
+
+export async function getBotMoveAsync(
+  fen: string,
+  difficulty: BotDifficulty,
+): Promise<{ from: Square; to: Square; promotion?: string } | null> {
+  const worker = getBotWorker();
+  if (!worker) return getBotMove(fen, difficulty);
+
+  const id = ++botRequestId;
+  return new Promise<{ from: Square; to: Square; promotion?: string } | null>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      // Timed out — the worker is wedged; reject everyone and fall back.
+      botWorkerBroken = true;
+      botWorker?.terminate();
+      botWorker = null;
+      const all = [...pendingBotRequests.values()];
+      pendingBotRequests.clear();
+      for (const pending of all) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error("Bot search timed out"));
+      }
+    }, BOT_SEARCH_TIMEOUT_MS);
+
+    pendingBotRequests.set(id, { resolve, reject, timer });
+    worker.postMessage({ id, fen, difficulty });
+  }).catch(async (err) => {
+    // One retry on the main thread so a worker hiccup never dead-ends a game.
+    console.error("Bot worker failed, searching on main thread:", err);
+    return getBotMove(fen, difficulty);
+  });
+}

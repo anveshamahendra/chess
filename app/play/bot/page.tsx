@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Chess, Square } from "chess.js";
 import { NavBar } from "@/components/nav/NavBar";
 import { PillButton } from "@/components/ui/PillButton";
@@ -12,7 +12,7 @@ import { Modal } from "@/components/ui/Modal";
 import { MoveRow } from "@/hooks/useGameRealtime";
 import { usePlyCursor } from "@/hooks/usePlyCursor";
 import { playSound } from "@/lib/sounds";
-import { getBotMove, BotDifficulty } from "@/lib/chess/botEngine";
+import { getBotMoveAsync, BotDifficulty } from "@/lib/chess/botEngine";
 import { getGameStatus } from "@/lib/chess/engine";
 import { cn } from "@/lib/utils";
 import { Bot, RotateCcw, Flag, Sparkles, RefreshCw, Undo2 } from "lucide-react";
@@ -92,7 +92,9 @@ export default function PlayBotPage() {
     }
   }, [inGame, playerColor, fen, gameOver]);
 
-  // Handle clock countdown
+  // Handle clock countdown. Ticks once per second — ClockDisplay's useClock
+  // interpolates between updates, so the display stays smooth while the whole
+  // page re-renders 10x less often.
   useEffect(() => {
     if (!inGame || gameOver || selectedTC.minutes === 0) return;
 
@@ -102,7 +104,7 @@ export default function PlayBotPage() {
 
       if (isPlayerTurn) {
         setPlayerTimeMs((prev) => {
-          if (prev <= 100) {
+          if (prev <= 1000) {
             setGameOver({
               result: playerColor === "white" ? "0-1" : "1-0",
               reason: "Time out",
@@ -111,11 +113,11 @@ export default function PlayBotPage() {
             playSound("gameEnd");
             return 0;
           }
-          return prev - 100;
+          return prev - 1000;
         });
       } else {
         setBotTimeMs((prev) => {
-          if (prev <= 100) {
+          if (prev <= 1000) {
             setGameOver({
               result: playerColor === "white" ? "1-0" : "0-1",
               reason: "Bot timed out",
@@ -124,10 +126,10 @@ export default function PlayBotPage() {
             playSound("gameEnd");
             return 0;
           }
-          return prev - 100;
+          return prev - 1000;
         });
       }
-    }, 100);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [inGame, gameOver, selectedTC.minutes, chess, playerColor]);
@@ -139,7 +141,7 @@ export default function PlayBotPage() {
 
     botTimerRef.current = setTimeout(async () => {
       try {
-        const botMove = await getBotMove(chess.fen(), difficulty);
+        const botMove = await getBotMoveAsync(chess.fen(), difficulty);
         if (!botMove) {
           setIsBotThinking(false);
           return;
@@ -202,62 +204,65 @@ export default function PlayBotPage() {
     }, delay);
   };
 
-  const handlePlayerMove = (from: Square, to: Square, promotion?: string) => {
-    if (gameOver || isBotThinking) return;
+  const handlePlayerMove = useCallback(
+    (from: Square, to: Square, promotion?: string) => {
+      if (gameOver || isBotThinking) return;
 
-    const isPlayerTurn = (chess.turn() === "w" && playerColor === "white") ||
-                         (chess.turn() === "b" && playerColor === "black");
-    if (!isPlayerTurn) return;
+      const isPlayerTurn = (chess.turn() === "w" && playerColor === "white") ||
+                           (chess.turn() === "b" && playerColor === "black");
+      if (!isPlayerTurn) return;
 
-    try {
-      const moveResult = chess.move({ from, to, promotion });
-      if (!moveResult) return;
+      try {
+        const moveResult = chess.move({ from, to, promotion });
+        if (!moveResult) return;
 
-      const newFen = chess.fen();
-      setFen(newFen);
+        const newFen = chess.fen();
+        setFen(newFen);
 
-      const moveRow: MoveRow = {
-        id: `player-${Date.now()}`,
-        game_id: "bot-game",
-        move_number: moves.length + 1,
-        player_color: playerColor,
-        san: moveResult.san,
-        fen_after: newFen,
-        from_square: moveResult.from,
-        to_square: moveResult.to,
-        time_taken_ms: 0,
-        created_at: new Date().toISOString(),
-      };
+        const moveRow: MoveRow = {
+          id: `player-${Date.now()}`,
+          game_id: "bot-game",
+          move_number: moves.length + 1,
+          player_color: playerColor,
+          san: moveResult.san,
+          fen_after: newFen,
+          from_square: moveResult.from,
+          to_square: moveResult.to,
+          time_taken_ms: 0,
+          created_at: new Date().toISOString(),
+        };
 
-      setMoves((prev) => [...prev, moveRow]);
+        setMoves((prev) => [...prev, moveRow]);
 
-      // Sound
-      if (moveResult.san.includes("#")) {
-        playSound("gameEnd");
-      } else if (moveResult.san.includes("+")) {
-        playSound("check");
-      } else if (moveResult.san.includes("x")) {
-        playSound("capture");
-      } else {
-        playSound("move");
+        // Sound
+        if (moveResult.san.includes("#")) {
+          playSound("gameEnd");
+        } else if (moveResult.san.includes("+")) {
+          playSound("check");
+        } else if (moveResult.san.includes("x")) {
+          playSound("capture");
+        } else {
+          playSound("move");
+        }
+
+        // Check game status
+        const status = getGameStatus(chess);
+        if (status.over) {
+          const isWinnerPlayer = (status.result === "1-0" && playerColor === "white") ||
+                                (status.result === "0-1" && playerColor === "black");
+          setGameOver({
+            result: status.result ?? "1/2-1/2",
+            reason: status.reason ? status.reason.replace(/_/g, " ") : "Game over",
+            winner: status.result === "1/2-1/2" ? "draw" : isWinnerPlayer ? "player" : "bot",
+          });
+          playSound("gameEnd");
+        }
+      } catch {
+        // Invalid move
       }
-
-      // Check game status
-      const status = getGameStatus(chess);
-      if (status.over) {
-        const isWinnerPlayer = (status.result === "1-0" && playerColor === "white") ||
-                              (status.result === "0-1" && playerColor === "black");
-        setGameOver({
-          result: status.result ?? "1/2-1/2",
-          reason: status.reason ? status.reason.replace(/_/g, " ") : "Game over",
-          winner: status.result === "1/2-1/2" ? "draw" : isWinnerPlayer ? "player" : "bot",
-        });
-        playSound("gameEnd");
-      }
-    } catch {
-      // Invalid move
-    }
-  };
+    },
+    [gameOver, isBotThinking, chess, playerColor, moves.length],
+  );
 
   const handleResign = () => {
     if (gameOver) return;
@@ -296,6 +301,15 @@ export default function PlayBotPage() {
   // player is browsing history (view-only; game state is untouched).
   const viewedMove = history.cursor > 0 ? (moves[history.cursor - 1] ?? null) : null;
   const viewFen = history.atLatest ? fen : viewedMove?.fen_after ?? "start";
+  const lastMove = useMemo(() => {
+    if (viewedMove) {
+      return {
+        from: viewedMove.from_square as Square,
+        to: viewedMove.to_square as Square,
+      };
+    }
+    return null;
+  }, [viewedMove]);
 
   return (
     <div className="min-h-screen bg-page">
@@ -440,14 +454,7 @@ export default function PlayBotPage() {
               interactive={
                 inGame && history.atLatest && isPlayerTurn && !gameOver && !isBotThinking
               }
-              lastMove={
-                viewedMove
-                  ? {
-                      from: viewedMove.from_square as Square,
-                      to: viewedMove.to_square as Square,
-                    }
-                  : null
-              }
+              lastMove={lastMove}
             />
 
             {/* Player Info Footer */}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { memo, useState, useMemo, useCallback } from "react";
 import { Square } from "chess.js";
 import { getLegalMoves, createGame } from "@/lib/chess/engine";
 
@@ -21,7 +20,7 @@ interface ChessBoardProps {
   interactive?: boolean;
 }
 
-export function ChessBoard({
+export const ChessBoard = memo(function ChessBoard({
   fen,
   onMove,
   orientation = "white",
@@ -40,41 +39,42 @@ export function ChessBoard({
   const files = orientation === "white" ? FILES : [...FILES].reverse();
   const ranks = orientation === "white" ? RANKS : [...RANKS].reverse();
 
-  function isPromotionMove(from: Square, to: Square) {
-    const piece = game.get(from);
-    if (!piece || piece.type !== "p") return false;
-    const targetRank = to[1];
-    return (piece.color === "w" && targetRank === "8") || (piece.color === "b" && targetRank === "1");
-  }
+  const handleSquareClick = useCallback(
+    (square: Square) => {
+      if (!interactive) return;
 
-  function handleSquareClick(square: Square) {
-    if (!interactive) return;
-
-    if (selected) {
-      if (legalTargets.includes(square)) {
-        if (isPromotionMove(selected, square)) {
-          setPendingPromotion({ from: selected, to: square });
+      if (selected) {
+        if (legalTargets.includes(square)) {
+          const selectedPiece = game.get(selected);
+          const isPromotion =
+            selectedPiece?.type === "p" &&
+            ((selectedPiece.color === "w" && square[1] === "8") ||
+              (selectedPiece.color === "b" && square[1] === "1"));
+          if (isPromotion) {
+            setPendingPromotion({ from: selected, to: square });
+            setSelected(null);
+            return;
+          }
+          onMove(selected, square);
           setSelected(null);
           return;
         }
-        onMove(selected, square);
+        const piece = game.get(square);
+        if (piece && piece.color === game.turn()) {
+          setSelected(square);
+          return;
+        }
         setSelected(null);
         return;
       }
+
       const piece = game.get(square);
       if (piece && piece.color === game.turn()) {
         setSelected(square);
-        return;
       }
-      setSelected(null);
-      return;
-    }
-
-    const piece = game.get(square);
-    if (piece && piece.color === game.turn()) {
-      setSelected(square);
-    }
-  }
+    },
+    [interactive, selected, legalTargets, game, onMove],
+  );
 
   const inCheckSquare = useMemo(() => {
     if (!game.inCheck()) return null;
@@ -102,6 +102,9 @@ export function ChessBoard({
             const isLastMove =
               lastMove && (lastMove.from === square || lastMove.to === square);
             const isCheck = inCheckSquare === square;
+            const isEdgeFile = file === files[0];
+            const isEdgeRank = rank === ranks[ranks.length - 1];
+            const coordColor = isLight ? "var(--board-dark)" : "var(--board-light)";
 
             return (
               <div
@@ -114,23 +117,31 @@ export function ChessBoard({
               >
                 {isLastMove && <div className="absolute inset-0 bg-yellow-300/30" />}
                 {isSelected && <div className="absolute inset-0 bg-blue-400/40" />}
-                {isCheck && (
-                  <motion.div
-                    animate={{ opacity: [0.3, 0.7, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1.2 }}
-                    className="absolute inset-0 bg-red-500/50"
-                  />
-                )}
+                {isCheck && <div className="check-pulse" />}
                 {isLegalTarget && !piece && (
                   <div className="absolute h-3 w-3 rounded-full bg-black/20 dark:bg-white/40" />
                 )}
                 {isLegalTarget && piece && (
                   <div className="absolute inset-1 rounded-full border-4 border-black/20 dark:border-white/40" />
                 )}
+                {isEdgeFile && (
+                  <span
+                    className="absolute bottom-0.5 left-1 text-[10px] font-bold leading-none z-20 select-none"
+                    style={{ color: coordColor }}
+                  >
+                    {rank}
+                  </span>
+                )}
+                {isEdgeRank && (
+                  <span
+                    className="absolute bottom-0.5 right-1 text-[10px] font-bold leading-none z-20 select-none"
+                    style={{ color: coordColor }}
+                  >
+                    {file}
+                  </span>
+                )}
                 {piece && (
-                  <motion.span
-                    layout
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  <span
                     className="text-4xl md:text-5xl relative z-10"
                     style={{
                       color: piece.color === "w" ? "var(--piece-white)" : "var(--piece-black)",
@@ -138,7 +149,7 @@ export function ChessBoard({
                     }}
                   >
                     {PIECE_UNICODE[`${piece.color}${piece.type}`]}
-                  </motion.span>
+                  </span>
                 )}
               </div>
             );
@@ -170,4 +181,4 @@ export function ChessBoard({
       )}
     </div>
   );
-}
+});

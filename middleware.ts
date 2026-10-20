@@ -18,12 +18,13 @@ function tooMany(retryAfterSeconds: number) {
 }
 
 export async function middleware(req: NextRequest) {
-  if (!(await ipRateLimit(req, "api", PER_MINUTE, 60_000))) {
-    return tooMany(60);
-  }
-  if (!(await ipRateLimit(req, "api-long", PER_FIVE_MINUTES, 300_000))) {
-    return tooMany(300);
-  }
+  // Independent buckets — check both in parallel to halve the Redis latency.
+  const [withinMinute, withinFive] = await Promise.all([
+    ipRateLimit(req, "api", PER_MINUTE, 60_000),
+    ipRateLimit(req, "api-long", PER_FIVE_MINUTES, 300_000),
+  ]);
+  if (!withinMinute) return tooMany(60);
+  if (!withinFive) return tooMany(300);
   return NextResponse.next();
 }
 

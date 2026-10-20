@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Square } from "chess.js";
 import { motion } from "framer-motion";
@@ -38,6 +38,14 @@ export default function PlayRoomPage() {
   const [showEndModal, setShowEndModal] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [countdownSecs, setCountdownSecs] = useState(0);
+  // Board position applied locally the instant a move is clicked; kept until
+  // the server/realtime update confirms it, so the piece never waits on the
+  // network. Cleared on rejection (rollback) or when fen_current catches up.
+  const [optimistic, setOptimistic] = useState<{
+    fen: string;
+    lastMove: { from: Square; to: Square };
+    baseFen: string;
+  } | null>(null);
 
   // Transient notice for rejected actions (rate limits, illegal moves, …).
   useEffect(() => {
@@ -46,7 +54,7 @@ export default function PlayRoomPage() {
     return () => clearTimeout(timer);
   }, [actionError]);
 
-  async function reportActionError(res: Response) {
+  const reportActionError = useCallback(async (res: Response) => {
     if (res.status === 429) {
       setActionError("Slow down — try again in a moment.");
       return;
@@ -57,7 +65,7 @@ export default function PlayRoomPage() {
     } catch {
       setActionError("Something went wrong.");
     }
-  }
+  }, []);
 
   // Resolve room code -> game id. RLS only lets participants read games, so
   // invitees (who aren't participants yet) resolve the code server-side.
@@ -149,15 +157,52 @@ export default function PlayRoomPage() {
     setJoining(false);
   }
 
-  async function handleMove(from: Square, to: Square, promotion?: string) {
-    if (!gameId) return;
-    const res = await fetch(`/api/games/${gameId}/move`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, promotion }),
-    });
-    if (!res.ok) await reportActionError(res);
-  }
+  const handleMove = useCallback(
+    async (from: Square, to: Square, promotion?: string) => {
+      if (!gameId || !game || optimistic) return;
+
+      // Optimistic update: apply the move locally right now so the piece moves
+      // on this frame, then confirm against the server.
+      const baseFen = game.fen_current === "start" ? undefined : game.fen_current;
+      let optimisticFen: string;
+      try {
+        const preview = createGame(baseFen);
+        const applied = preview.move({ from, to, promotion });
+        if (!applied) return;
+        optimisticFen = preview.fen();
+      } catch {
+        return;
+      }
+      setOptimistic({ fen: optimisticFen, lastMove: { from, to }, baseFen: game.fen_current });
+
+      try {
+        const res = await fetch(`/api/games/${gameId}/move`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ from, to, promotion }),
+        });
+        if (!res.ok) {
+          setOptimistic(null); // rollback — server rejected the move
+          await reportActionError(res);
+        }
+        // On success, keep the optimistic board until realtime (or the next
+        // fen_current) supersedes it — see the clear effect below.
+      } catch {
+        setOptimistic(null);
+        setActionError("Connection problem — move not saved.");
+      }
+    },
+    [gameId, game, optimistic, reportActionError],
+  );
+
+  // Drop the optimistic position once the server's fen_current reflects any
+  // change from the pre-move position (our move confirmed, or an opponent
+  // move landed). Same-fen updates (clocks, draw offers) keep it.
+  const serverFen = game?.fen_current;
+  useEffect(() => {
+    if (!optimistic || !serverFen) return;
+    if (serverFen !== optimistic.baseFen) setOptimistic(null);
+  }, [serverFen, optimistic]);
 
   async function handleResign() {
     if (!gameId) return;
@@ -174,6 +219,20 @@ export default function PlayRoomPage() {
     });
     if (!res.ok) await reportActionError(res);
   }
+
+  // Position being displayed while browsing history (hooks must run before
+  // any early return, so this lives up here).
+  const viewedMove = history.cursor > 0 ? (moves[history.cursor - 1] ?? null) : null;
+  const lastMove = useMemo(() => {
+    if (history.atLatest && optimistic) return optimistic.lastMove;
+    if (viewedMove) {
+      return {
+        from: viewedMove.from_square as Square,
+        to: viewedMove.to_square as Square,
+      };
+    }
+    return null;
+  }, [history.atLatest, optimistic, viewedMove]);
 
   if (lookupError) {
     return (
@@ -274,19 +333,21 @@ export default function PlayRoomPage() {
 
   // fen_current is "start" until the first move, so substring matching on the
   // FEN (" w " / " b ") would report nobody's turn. Derive it with chess.js.
-  const whiteToMove = createGame(game.fen_current).turn() === "w";
+  // While an optimistic move is pending, derive from that position so the UI
+  // (turn indicator, interactivity) flips immediately.
+  const liveFen = optimistic ? optimistic.fen : game.fen_current;
+  const whiteToMove = createGame(liveFen).turn() === "w";
   const isMyTurn =
     (whiteToMove && isWhite) || (!whiteToMove && isBlack);
   const inCountdown = countdownSecs > 0;
   const clockActive = game.status === "active" && isParticipant && !inCountdown;
 
-  // Position being displayed: the live game, or an earlier ply while the
-  // player is browsing history.
-  const viewedMove = history.cursor > 0 ? (moves[history.cursor - 1] ?? null) : null;
+  // Position being displayed: the live game (or pending optimistic move), or
+  // an earlier ply while the player is browsing history.
   const viewFen = history.atLatest
-    ? game.fen_current === "start"
+    ? liveFen === "start"
       ? "start"
-      : game.fen_current
+      : liveFen
     : viewedMove?.fen_after ?? "start";
 
   return (
@@ -303,16 +364,10 @@ export default function PlayRoomPage() {
               isParticipant &&
               isMyTurn &&
               game.status === "active" &&
-              !inCountdown
+              !inCountdown &&
+              !optimistic
             }
-            lastMove={
-              viewedMove
-                ? {
-                    from: viewedMove.from_square as Square,
-                    to: viewedMove.to_square as Square,
-                  }
-                : null
-            }
+            lastMove={lastMove}
           />
           {inCountdown && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center rounded-2xl bg-black/60 backdrop-blur-[2px]">

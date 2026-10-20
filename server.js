@@ -132,6 +132,17 @@ if (dev) {
   });
 }
 
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `> port ${port} is already in use. Another server is running ` +
+        `(a \`next dev\` on 3000?). Stop it or start with PORT=<other>.`,
+    );
+    process.exit(1);
+  }
+  throw err;
+});
+
 app
   .prepare()
   .then(() => {
