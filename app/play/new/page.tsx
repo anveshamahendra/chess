@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/nav/NavBar";
 import { PillButton } from "@/components/ui/PillButton";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyAccount } from "@/hooks/useMyAccount";
 import { cn } from "@/lib/utils";
 
 const TIME_CONTROLS = [
@@ -16,11 +17,19 @@ const TIME_CONTROLS = [
 
 export default function NewGamePage() {
   const { isAuthed, loading: authLoading } = useAuth();
+  const { account, loading: accountLoading } = useMyAccount();
   const [selectedTC, setSelectedTC] = useState(TIME_CONTROLS[2]);
   const [isRated, setIsRated] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Google users who haven't picked a username yet belong in onboarding.
+  useEffect(() => {
+    if (!accountLoading && account && !account.username_confirmed) {
+      router.replace(`/onboarding/username?next=${encodeURIComponent("/play/new")}`);
+    }
+  }, [accountLoading, account, router]);
 
   async function handleCreate() {
     setCreating(true);

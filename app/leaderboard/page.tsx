@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { NavBar } from "@/components/nav/NavBar";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyAccount } from "@/hooks/useMyAccount";
 import { createClient } from "@/lib/supabase/client";
 
 interface Row {
   id: string;
   username: string;
+  display_name: string | null;
   rating: number;
   games_played: number;
   wins: number;
@@ -20,6 +23,7 @@ const MEDAL: Record<number, string> = { 0: "#F2C94C", 1: "#C0C0C0", 2: "#CD7F32"
 
 export default function LeaderboardPage() {
   const { isAuthed, loading: authLoading } = useAuth();
+  const { account, loading: accountLoading } = useMyAccount();
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,12 +33,19 @@ export default function LeaderboardPage() {
     if (!authLoading && !isAuthed) router.push("/sign-in");
   }, [authLoading, isAuthed, router]);
 
+  // Google users who haven't picked a username yet belong in onboarding.
+  useEffect(() => {
+    if (!accountLoading && account && !account.username_confirmed) {
+      router.replace(`/onboarding/username?next=${encodeURIComponent("/leaderboard")}`);
+    }
+  }, [accountLoading, account, router]);
+
   useEffect(() => {
     // RLS only lets signed-in users read profiles; skip the doomed query.
     if (authLoading || !isAuthed) return;
     supabase
       .from("profiles")
-      .select("id, username, rating, games_played, wins, losses, draws")
+      .select("id, username, display_name, rating, games_played, wins, losses, draws")
       .order("rating", { ascending: false })
       .limit(50)
       .then(({ data }) => {
@@ -60,14 +71,21 @@ export default function LeaderboardPage() {
               key={row.id}
               className="flex items-center justify-between px-6 py-4 border-b border-white/5 last:border-0"
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 min-w-0">
                 <span
                   className="w-6 text-sm font-bold"
                   style={{ color: MEDAL[i] ?? "#a3a3a3" }}
                 >
                   {i + 1}
                 </span>
-                <span className="text-white text-[15px]">{row.username}</span>
+                <Link href={`/member/${row.username}`} className="min-w-0 hover:opacity-80 transition-opacity">
+                  <span className="text-white text-[15px] block truncate">
+                    {row.display_name ?? row.username}
+                  </span>
+                  <span className="text-[#a3a3a3] text-xs block truncate">
+                    @{row.username}
+                  </span>
+                </Link>
               </div>
               <div className="flex items-center gap-6 text-sm">
                 <span className="text-[#a3a3a3]">

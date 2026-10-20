@@ -109,12 +109,12 @@ export default function AnalysisPage() {
       let whiteName = "White";
       let blackName = "Black";
       if (game?.white_player_id) {
-        const { data } = await supabase.from("profiles").select("username").eq("id", game.white_player_id).maybeSingle();
-        if (data?.username) whiteName = data.username;
+        const { data } = await supabase.from("profiles").select("username, display_name").eq("id", game.white_player_id).maybeSingle();
+        if (data) whiteName = data.display_name ?? data.username;
       }
       if (game?.black_player_id) {
-        const { data } = await supabase.from("profiles").select("username").eq("id", game.black_player_id).maybeSingle();
-        if (data?.username) blackName = data.username;
+        const { data } = await supabase.from("profiles").select("username, display_name").eq("id", game.black_player_id).maybeSingle();
+        if (data) blackName = data.display_name ?? data.username;
       }
       setNames({ white: whiteName, black: blackName });
     }

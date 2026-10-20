@@ -18,6 +18,7 @@ import { usePlyCursor } from "@/hooks/usePlyCursor";
 import { useAuth } from "@/hooks/useAuth";
 import { playSound } from "@/lib/sounds";
 import { createGame } from "@/lib/chess/engine";
+import { createClient } from "@/lib/supabase/client";
 
 interface RoomLookup {
   // Absent for signed-out visitors: the API withholds the game id until the
@@ -99,6 +100,33 @@ export default function PlayRoomPage() {
   const gameId = lookup?.id ?? "";
   const { game, moves, loading: gameLoading, refetch } = useGameRealtime(gameId);
   const history = usePlyCursor(moves.length);
+
+  // Player display names for the clock labels (display_name is primary,
+  // falls back to the username, then to You/Opponent while loading).
+  const supabase = createClient();
+  const [playerNames, setPlayerNames] = useState<{ white: string; black: string } | null>(null);
+
+  useEffect(() => {
+    if (!game?.white_player_id && !game?.black_player_id) return;
+    let cancelled = false;
+    (async () => {
+      const [white, black] = await Promise.all(
+        [game?.white_player_id, game?.black_player_id].map((id) =>
+          id
+            ? supabase.from("profiles").select("username, display_name").eq("id", id).maybeSingle()
+            : Promise.resolve({ data: null as any })
+        )
+      );
+      if (cancelled) return;
+      setPlayerNames({
+        white: white.data ? white.data.display_name ?? white.data.username : "White",
+        black: black.data ? black.data.display_name ?? black.data.username : "Black",
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [game?.white_player_id, game?.black_player_id, supabase]);
 
   useEffect(() => {
     if (game?.status === "completed") setShowEndModal(true);
@@ -394,7 +422,7 @@ export default function PlayRoomPage() {
             </div>
           )}
           <ClockDisplay
-            label="Opponent"
+            label={playerNames ? (isWhite ? playerNames.black : playerNames.white) : "Opponent"}
             remainingMs={isWhite ? game.black_time_remaining_ms : game.white_time_remaining_ms}
             isRunning={clockActive && !isMyTurn}
             active={clockActive && !isMyTurn}
@@ -409,7 +437,7 @@ export default function PlayRoomPage() {
             />
           )}
           <ClockDisplay
-            label="You"
+            label={playerNames ? (isWhite ? playerNames.white : playerNames.black) : "You"}
             remainingMs={isWhite ? game.white_time_remaining_ms : game.black_time_remaining_ms}
             isRunning={clockActive && isMyTurn}
             active={clockActive && isMyTurn}

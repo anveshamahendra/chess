@@ -6,6 +6,7 @@ import { PillButton } from "@/components/ui/PillButton";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyAccount } from "@/hooks/useMyAccount";
 import { createClient } from "@/lib/supabase/client";
 
 const links = [
@@ -17,8 +18,12 @@ const links = [
 
 export function NavBar() {
   const { user, isAuthed } = useAuth();
+  const { account } = useMyAccount();
   const [menuOpen, setMenuOpen] = useState(false);
   const supabase = createClient();
+
+  const displayName = account?.display_name ?? account?.username ?? user?.email;
+  const initial = (displayName ?? "?")[0]?.toUpperCase() ?? "?";
 
   return (
     <nav className="flex items-center justify-between px-4 md:px-8 py-5">
@@ -45,18 +50,39 @@ export function NavBar() {
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="h-9 w-9 rounded-full bg-violet-500 flex items-center justify-center text-white text-sm font-bold"
+              className="h-9 w-9 rounded-full bg-violet-500 flex items-center justify-center text-white text-sm font-bold overflow-hidden"
+              aria-label="Account menu"
             >
-              {user?.email?.[0].toUpperCase() ?? "?"}
+              {account?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={account.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initial
+              )}
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-card p-2 shadow-xl z-50">
+              <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-card p-2 shadow-xl z-50">
+                <div className="px-3 py-2 border-b border-white/10 mb-1">
+                  <p className="text-white text-sm font-medium truncate">
+                    {displayName}
+                  </p>
+                  {account?.username && (
+                    <p className="text-[#a3a3a3] text-xs truncate">@{account.username}</p>
+                  )}
+                </div>
                 <Link
                   href="/dashboard"
                   className="block px-3 py-2 rounded-xl text-sm text-white hover:bg-white/10"
                   onClick={() => setMenuOpen(false)}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  href="/settings/profile"
+                  className="block px-3 py-2 rounded-xl text-sm text-white hover:bg-white/10"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Settings
                 </Link>
                 <button
                   onClick={async () => {
