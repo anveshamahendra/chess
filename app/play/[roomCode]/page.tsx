@@ -15,6 +15,7 @@ import { GameEndModal } from "@/components/game/GameEndModal";
 import { DrawOfferBanner } from "@/components/game/DrawOfferBanner";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePlyCursor } from "@/hooks/usePlyCursor";
+import { useCapturedPieces } from "@/hooks/useCapturedPieces";
 import { useAuth } from "@/hooks/useAuth";
 import { playSound } from "@/lib/sounds";
 import { createGame } from "@/lib/chess/engine";
@@ -46,6 +47,7 @@ export default function PlayRoomPage() {
     fen: string;
     lastMove: { from: Square; to: Square };
     baseFen: string;
+    san: string;
   } | null>(null);
 
   // Transient notice for rejected actions (rate limits, illegal moves, …).
@@ -193,15 +195,22 @@ export default function PlayRoomPage() {
       // on this frame, then confirm against the server.
       const baseFen = game.fen_current === "start" ? undefined : game.fen_current;
       let optimisticFen: string;
+      let optimisticSan: string;
       try {
         const preview = createGame(baseFen);
         const applied = preview.move({ from, to, promotion });
         if (!applied) return;
         optimisticFen = preview.fen();
+        optimisticSan = applied.san;
       } catch {
         return;
       }
-      setOptimistic({ fen: optimisticFen, lastMove: { from, to }, baseFen: game.fen_current });
+      setOptimistic({
+        fen: optimisticFen,
+        lastMove: { from, to },
+        baseFen: game.fen_current,
+        san: optimisticSan,
+      });
 
       try {
         const res = await fetch(`/api/games/${gameId}/move`, {
@@ -261,6 +270,19 @@ export default function PlayRoomPage() {
     }
     return null;
   }, [history.atLatest, optimistic, viewedMove]);
+
+  // Pieces each side has lost, for the position on display — including a move
+  // applied locally but not yet confirmed by the server, so a capture shows
+  // the instant it is played.
+  const captured = useCapturedPieces(
+    moves,
+    history.cursor,
+    history.atLatest ? optimistic?.san : undefined
+  );
+  // The top clock names the opponent when we're a participant, White when
+  // we're just watching, so the side it belongs to follows the same rule.
+  const topSide = isWhite ? "b" : "w";
+  const bottomSide = isWhite ? "w" : "b";
 
   if (lookupError) {
     return (
@@ -426,6 +448,7 @@ export default function PlayRoomPage() {
             remainingMs={isWhite ? game.black_time_remaining_ms : game.white_time_remaining_ms}
             isRunning={clockActive && !isMyTurn}
             active={clockActive && !isMyTurn}
+            captured={captured[topSide]}
           />
           <MoveList moves={moves} cursor={history.cursor} onSelect={history.goTo} />
           {moves.length > 0 && (
@@ -441,6 +464,7 @@ export default function PlayRoomPage() {
             remainingMs={isWhite ? game.white_time_remaining_ms : game.black_time_remaining_ms}
             isRunning={clockActive && isMyTurn}
             active={clockActive && isMyTurn}
+            captured={captured[bottomSide]}
           />
 
           {game.draw_offered_by && game.status === "active" && (

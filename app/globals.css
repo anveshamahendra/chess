@@ -70,6 +70,19 @@ html, body {
   50% { opacity: 0.7; }
 }
 
+/* Captured-piece icons sit on cards that are dark, but flip to white while a
+   clock is running, so each color carries a halo of the other one to keep its
+   contrast on either background. */
+.captured-piece-white {
+  color: #fafafa;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8), 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.captured-piece-black {
+  color: #151515;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.75), 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

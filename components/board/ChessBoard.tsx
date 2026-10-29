@@ -7,7 +7,7 @@ import { getLegalMoves, createGame } from "@/lib/chess/engine";
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const RANKS = ["8", "7", "6", "5", "4", "3", "2", "1"];
 
-const PIECE_UNICODE: Record<string, string> = {
+export const PIECE_UNICODE: Record<string, string> = {
   wp: "♙", wn: "♘", wb: "♗", wr: "♖", wq: "♕", wk: "♔",
   bp: "♟", bn: "♞", bb: "♝", br: "♜", bq: "♛", bk: "♚",
 };

@@ -5,12 +5,14 @@ import { Chess, Square } from "chess.js";
 import { NavBar } from "@/components/nav/NavBar";
 import { PillButton } from "@/components/ui/PillButton";
 import { ChessBoard } from "@/components/board/ChessBoard";
+import { CapturedPieces } from "@/components/game/CapturedPieces";
 import { ClockDisplay } from "@/components/game/ClockDisplay";
 import { MoveList } from "@/components/game/MoveList";
 import { MoveHistoryNav } from "@/components/game/MoveHistoryNav";
 import { Modal } from "@/components/ui/Modal";
 import { MoveRow } from "@/hooks/useGameRealtime";
 import { usePlyCursor } from "@/hooks/usePlyCursor";
+import { useCapturedPieces } from "@/hooks/useCapturedPieces";
 import { playSound } from "@/lib/sounds";
 import { getBotMoveAsync, BotDifficulty } from "@/lib/chess/botEngine";
 import { getGameStatus } from "@/lib/chess/engine";
@@ -57,6 +59,10 @@ export default function PlayBotPage() {
 
   const botTimerRef = useRef<NodeJS.Timeout | null>(null);
   const history = usePlyCursor(moves.length);
+
+  // Pieces each side has lost, derived from the move list — so undoing a move
+  // or stepping back through history takes its capture back off the display.
+  const captured = useCapturedPieces(moves, history.cursor);
 
   const startNewGame = useCallback(() => {
     chess.reset();
@@ -296,6 +302,8 @@ export default function PlayBotPage() {
   const activeBotMeta = DIFFICULTIES.find((d) => d.id === difficulty) ?? DIFFICULTIES[1];
   const isPlayerTurn = (chess.turn() === "w" && playerColor === "white") ||
                        (chess.turn() === "b" && playerColor === "black");
+  const playerSide = playerColor === "white" ? "w" : "b";
+  const botSide = playerSide === "w" ? "b" : "w";
 
   // Position being displayed: the live game, or an earlier ply while the
   // player is browsing history (view-only; game state is untouched).
@@ -438,12 +446,15 @@ export default function PlayBotPage() {
                 </div>
               </div>
 
-              {isBotThinking && (
-                <div className="flex items-center gap-2 bg-[#1a1a1a] px-3 py-1 rounded-full text-xs text-[#f5a524] animate-pulse">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>Thinking…</span>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <CapturedPieces pieces={captured[botSide]} />
+                {isBotThinking && (
+                  <div className="flex items-center gap-2 bg-[#1a1a1a] px-3 py-1 rounded-full text-xs text-[#f5a524] animate-pulse">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Thinking…</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Board */}
@@ -463,11 +474,14 @@ export default function PlayBotPage() {
                 <span className="text-sm font-semibold text-white">You</span>
                 <span className="text-xs text-[#a3a3a3]">({playerColor})</span>
               </div>
-              {isPlayerTurn && !gameOver && (
-                <span className="text-xs bg-[#22c55e]/20 text-[#22c55e] px-2.5 py-0.5 rounded-full font-medium">
-                  Your turn
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                <CapturedPieces pieces={captured[playerSide]} />
+                {isPlayerTurn && !gameOver && (
+                  <span className="text-xs bg-[#22c55e]/20 text-[#22c55e] px-2.5 py-0.5 rounded-full font-medium">
+                    Your turn
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

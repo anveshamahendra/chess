@@ -6,7 +6,9 @@ import { NavBar } from "@/components/nav/NavBar";
 import { PillButton } from "@/components/ui/PillButton";
 import { ChessBoard } from "@/components/board/ChessBoard";
 import { EvalBar } from "@/components/board/EvalBar";
+import { CapturedPieces } from "@/components/game/CapturedPieces";
 import { useAuth } from "@/hooks/useAuth";
+import { useCapturedPieces } from "@/hooks/useCapturedPieces";
 import { createClient } from "@/lib/supabase/client";
 import { analyzeGame, MoveAnalysis } from "@/lib/chess/analyzeGame";
 import { cn } from "@/lib/utils";
@@ -152,6 +154,7 @@ export default function AnalysisPage() {
 
   const currentFen = cursor === 0 ? "start" : moves[cursor - 1]?.fen_after ?? "start";
   const currentAnalysis = cursor > 0 ? analysis?.[cursor - 1] : null;
+  const captured = useCapturedPieces(moves, cursor);
 
   if (!gameLoaded || authLoading) {
     return (
@@ -216,6 +219,19 @@ export default function AnalysisPage() {
           </div>
 
           <div className="w-full max-w-sm flex flex-col gap-3">
+            {/* Players, in the order they sit on the board (Black on top) */}
+            <div className="rounded-2xl bg-card overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <span className="text-sm font-medium text-white truncate">{names.black}</span>
+                <CapturedPieces pieces={captured.b} />
+              </div>
+              <div className="h-px bg-white/5" />
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <span className="text-sm font-medium text-white truncate">{names.white}</span>
+                <CapturedPieces pieces={captured.w} />
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <PillButton variant="secondary" className="!px-4" onClick={() => setCursor((c) => Math.max(0, c - 1))}>
                 ←
