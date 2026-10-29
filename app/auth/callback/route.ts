@@ -15,12 +15,14 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const next = safeNext(url.searchParams.get("next"));
 
-  // Behind a proxy (nginx / Vercel) the public origin lives in the
+  // Behind a proxy (nginx / Vercel / ngrok / Cloudflare) the public origin lives in the
   // forwarded headers rather than the request URL.
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  const host = forwardedHost ?? url.host;
-  const proto = forwardedProto ?? url.protocol.replace(":", "");
+  const rawForwardedHost = request.headers.get("x-forwarded-host");
+  const rawForwardedProto = request.headers.get("x-forwarded-proto");
+  const forwardedHost = rawForwardedHost ? rawForwardedHost.split(",")[0].trim() : null;
+  const forwardedProto = rawForwardedProto ? rawForwardedProto.split(",")[0].trim() : null;
+  const host = forwardedHost || url.host;
+  const proto = forwardedProto || url.protocol.replace(":", "");
   const origin = `${proto}://${host}`;
 
   if (code) {
